@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import axios from 'axios';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 
 // Pages
@@ -19,6 +21,18 @@ const qc = new QueryClient({
 });
 
 export default function App() {
+  // Keep-alive health check ping every 2 minutes (prevents Render instance from sleeping)
+  useEffect(() => {
+    const pingHealth = () => {
+      const base = import.meta.env.VITE_API_URL || 'https://healh-software.onrender.com/api';
+      const cleanBase = base.replace(/\/+$/, '');
+      axios.get(`${cleanBase}/health`).catch(() => {});
+    };
+    pingHealth();
+    const interval = setInterval(pingHealth, 120000); // 2 minutes
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>

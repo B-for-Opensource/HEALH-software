@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -89,6 +90,15 @@ def root():
         "framework": "FastAPI (Python 3.12)",
         "docs_url": "/docs",
         "redoc_url": "/redoc"
+    }
+
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "HEAL Clinic Management API",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
     }
 
 @app.get("/api")

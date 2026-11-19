@@ -135,6 +135,10 @@ try {
             require_once HEAL_ROOT . '/api/dashboard.php';
             break;
 
+        case 'health':
+            Response::json(['status' => 'healthy', 'service' => 'HEAL Clinic PHP API', 'timestamp' => date('c')]);
+            break;
+
         case '':
             Response::json(['status' => 'ok', 'app' => 'HEAL Clinic API', 'version' => HEAL_VERSION]);
             break;

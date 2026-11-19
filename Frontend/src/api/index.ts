@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const rawBase = import.meta.env.VITE_API_URL || 'https://healh-software.onrender.com/api';
+const API_BASE = rawBase.replace(/\/+$/, '');
 
 export const api = axios.create({
   baseURL: API_BASE,
