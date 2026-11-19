@@ -32,11 +32,24 @@ from routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create all tables and run seed data
-    Base.metadata.create_all(bind=engine)
+    # Startup: safely create all tables and handle concurrent worker boots
+    try:
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+    except Exception as e:
+        if "already exists" in str(e).lower():
+            pass
+        else:
+            print(f"Database schema initialization notice: {e}")
+
     db = SessionLocal()
     try:
         seed_database(db)
+    except Exception as e:
+        print(f"Database seed notice: {e}")
+        try:
+            db.rollback()
+        except Exception:
+            pass
     finally:
         db.close()
     yield
