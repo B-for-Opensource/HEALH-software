@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface User {
+export interface User {
   id: string;
-  name: string;
+  name?: string;
+  full_name?: string;
   role: string;
   branch_id: string;
   branch_name: string;
@@ -34,7 +35,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'heal-auth',
-      partialize: (state) => ({ token: state.token, user: state.user }),
+      partialize: (state) => ({ token: state.token, user: state.user, isAuthenticated: state.isAuthenticated }),
     }
   )
 );

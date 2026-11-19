@@ -114,8 +114,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="border-t border-slate-700 p-3">
           {sidebarOpen && user && (
             <div className="mb-2">
-              <p className="text-xs font-semibold text-white truncate">{user.name}</p>
-              <p className="text-[11px] text-slate-400 capitalize">{user.role.replace('_', ' ')} · {user.branch_name}</p>
+              <p className="text-xs font-semibold text-white truncate">{user.full_name || user.name || user.username}</p>
+              <p className="text-[11px] text-slate-400 capitalize">{user.role?.replace('_', ' ')} · {user.branch_name}</p>
             </div>
           )}
           <button

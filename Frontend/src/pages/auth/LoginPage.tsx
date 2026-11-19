@@ -39,14 +39,32 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await authApi.login({ username, password });
-      const { token, user } = res.data.data;
+      // authApi.login returns axios response.data: { success: true, data: { token, user } }
+      const payload = res?.data || res;
+      const token = payload?.token || res?.token;
+      const rawUser = payload?.user || res?.user;
+
+      if (!token || !rawUser) {
+        throw new Error(res?.message || 'Invalid login response format from server.');
+      }
+
+      const user = {
+        ...rawUser,
+        name: rawUser.full_name || rawUser.name || rawUser.username,
+      };
+
       login(token, user);
       navigate('/');
     } catch (err: any) {
-      if (err.message === 'Network Error' || !err.response) {
-        setError('Backend is currently waking up or deploying on Render (cold start takes ~40s). Please wait a few seconds and click Sign In again.');
+      console.error('Login failure:', err);
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.message && err.message !== 'Network Error' && !err.message.includes('undefined')) {
+        setError(err.message);
+      } else if (err.message === 'Network Error') {
+        setError('Network Error: Could not connect to the backend server. Please check your internet connection or backend URL.');
       } else {
-        setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+        setError('Login failed. Please check your username and password.');
       }
     } finally {
       setLoading(false);
