@@ -1,0 +1,47 @@
+# HEAL Clinic API — Apache .htaccess
+# Rewrites all requests to index.php (REST routing)
+# Works on cPanel shared hosting with mod_rewrite
+
+Options -Indexes
+Options -MultiViews
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /api/
+
+    # Allow direct access to real files (uploaded photos, etc.)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Route everything else to index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Block direct access to sensitive directories
+<FilesMatch "\.(php|sql|log|env|json|htpasswd)$">
+    <RequireAll>
+        Require all granted
+    </RequireAll>
+</FilesMatch>
+
+# Protect config and lib from direct access
+<IfModule mod_rewrite.c>
+    RewriteRule ^config/ - [F,L]
+    RewriteRule ^lib/ - [F,L]
+    RewriteRule ^logs/ - [F,L]
+    RewriteRule ^middleware/ - [F,L]
+</IfModule>
+
+# Allow PHP uploads up to 10MB
+php_value upload_max_filesize 10M
+php_value post_max_size 12M
+php_value max_execution_time 60
+php_value memory_limit 256M
