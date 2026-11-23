@@ -76,11 +76,6 @@ export default function RecruitmentView({ branches, departments }) {
     notes: ''
   });
 
-  useEffect(() => {
-    fetchRecruitment();
-    fetchSopsAndTraining();
-  }, []);
-
   const fetchRecruitment = async () => {
     try {
       setLoading(true);
@@ -105,7 +100,7 @@ export default function RecruitmentView({ branches, departments }) {
         axios.get('/api/announcements')
       ]);
       setSops(sopsRes.data || []);
-      setTrainingModules(trainRes.data.length > 0 ? trainRes.data : [
+      setTrainingModules((trainRes?.data && trainRes.data.length > 0) ? trainRes.data : [
         { id: 1, module_title: 'Clinic Network Culture & Patient Confidentiality (HIPAA/DPDP)', video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', duration_minutes: 25, category: 'Compliance', questions_count: 5, pass_percentage: 80 },
         { id: 2, module_title: 'Biometric Web Punching & Geofence Shift Policies', video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', duration_minutes: 15, category: 'Operations', questions_count: 4, pass_percentage: 100 },
         { id: 3, module_title: 'Infection Prevention & Clinical Sterilization Standards', video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', duration_minutes: 30, category: 'Clinical Quality', questions_count: 6, pass_percentage: 85 }
@@ -115,6 +110,11 @@ export default function RecruitmentView({ branches, departments }) {
       console.error('Error fetching SOPs/Training', err);
     }
   };
+
+  useEffect(() => {
+    fetchRecruitment();
+    fetchSopsAndTraining();
+  }, []);
 
   const handleCreateJob = async (e) => {
     e.preventDefault();

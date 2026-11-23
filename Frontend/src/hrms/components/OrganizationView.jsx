@@ -118,14 +118,6 @@ export default function OrganizationView({
 
   const term = INDUSTRIES[currentIndustry] || INDUSTRIES.healthcare;
 
-  // Initial load of sub-module datasets
-  useEffect(() => {
-    loadHolidays();
-    loadTransfers();
-    loadManagers();
-    loadReports();
-  }, []);
-
   const loadHolidays = async () => {
     try {
       const res = await axios.get('/api/organization/holidays');
@@ -164,6 +156,14 @@ export default function OrganizationView({
       setLoadingReports(false);
     }
   };
+
+  // Initial load of sub-module datasets
+  useEffect(() => {
+    loadHolidays();
+    loadTransfers();
+    loadManagers();
+    loadReports();
+  }, []);
 
   // ---------------- Branch CRUD Handlers ----------------
   const handleBranchSubmit = (e) => {

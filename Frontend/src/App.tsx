@@ -96,8 +96,8 @@ export default function App() {
 
             {/* 8. HRMS & Workforce Management Suite */}
             <Route path="/hrms"                       element={<HRMSPage />} />
-            <Route path="/hrms/:tab"                  element={<HRMSPage />} />
             <Route path="/hrms/commissions"           element={<DutyRosterCommissionPage />} />
+            <Route path="/hrms/:tab"                  element={<HRMSPage />} />
 
             {/* 9. Reports & Forensic Audit */}
             <Route path="/reports/dashboard"          element={<DashboardPage />} />

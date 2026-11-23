@@ -31,7 +31,7 @@ export default function Navbar({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBranchMenu, setShowBranchMenu] = useState(false);
 
-  const selectedBranchObj = branches.find(b => b.id === selectedBranch);
+  const selectedBranchObj = (branches || []).find(b => b.id === selectedBranch);
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
@@ -76,7 +76,7 @@ export default function Navbar({
               
               <div className="my-1 border-t border-slate-100" />
 
-              {branches.map((b) => (
+              {(branches || []).map((b) => (
                 <button
                   key={b.id}
                   onClick={() => { setSelectedBranch(b.id); setShowBranchMenu(false); }}
@@ -226,7 +226,7 @@ export default function Navbar({
               </div>
 
               <div className="max-h-40 overflow-y-auto px-2 space-y-0.5">
-                {usersList.slice(0, 8).map((user) => (
+                {(usersList || []).slice(0, 8).map((user) => (
                   <button
                     key={user.id}
                     onClick={() => {

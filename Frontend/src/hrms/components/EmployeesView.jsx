@@ -89,13 +89,6 @@ export default function EmployeesView({
     pan_number: ''
   });
 
-  // Load ratings when an employee is selected
-  useEffect(() => {
-    if (selectedEmp) {
-      loadEmployeeRatings(selectedEmp.id);
-    }
-  }, [selectedEmp]);
-
   const loadEmployeeRatings = async (empId) => {
     try {
       const res = await axios.get(`/api/employees/${empId}/performance`);
@@ -105,7 +98,14 @@ export default function EmployeesView({
     }
   };
 
-  const filteredEmployees = employees.filter((emp) => {
+  // Load ratings when an employee is selected
+  useEffect(() => {
+    if (selectedEmp) {
+      loadEmployeeRatings(selectedEmp.id);
+    }
+  }, [selectedEmp]);
+
+  const filteredEmployees = (employees || []).filter((emp) => {
     const matchSearch = searchTerm === '' || 
       emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.emp_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,9 +127,9 @@ export default function EmployeesView({
       last_name: '',
       email: '',
       phone: '',
-      branch_id: branches[0]?.id || 1,
-      department_id: departments[0]?.id || 1,
-      designation_id: designations[0]?.id || 1,
+      branch_id: branches?.[0]?.id || 1,
+      department_id: departments?.[0]?.id || 1,
+      designation_id: designations?.[0]?.id || 1,
       role: 'Doctor',
       employment_type: 'Full-Time',
       base_salary: 8000,

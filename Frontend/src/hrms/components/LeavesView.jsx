@@ -31,8 +31,8 @@ export default function LeavesView({
   const [reviewComment, setReviewComment] = useState('');
 
   const [newLeave, setNewLeave] = useState({
-    employee_id: employees[0]?.id || 1,
-    branch_id: branches[0]?.id || 1,
+    employee_id: (employees || [])[0]?.id || 1,
+    branch_id: (branches || [])[0]?.id || 1,
     leave_type: 'Casual',
     start_date: new Date().toISOString().split('T')[0],
     end_date: new Date().toISOString().split('T')[0],
@@ -41,7 +41,7 @@ export default function LeavesView({
     coverage_status: 'Pending Acceptance'
   });
 
-  const filteredLeaves = leaves.filter((l) => {
+  const filteredLeaves = (leaves || []).filter((l) => {
     if (statusFilter === 'All') return true;
     return l.status === statusFilter;
   });
@@ -54,8 +54,8 @@ export default function LeavesView({
     });
     setShowApplyModal(false);
     setNewLeave({
-      employee_id: employees[0]?.id || 1,
-      branch_id: branches[0]?.id || 1,
+      employee_id: (employees || [])[0]?.id || 1,
+      branch_id: (branches || [])[0]?.id || 1,
       leave_type: 'Casual',
       start_date: new Date().toISOString().split('T')[0],
       end_date: new Date().toISOString().split('T')[0],

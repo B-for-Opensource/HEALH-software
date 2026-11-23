@@ -21,8 +21,8 @@ export default function SelfServiceView({
   punchLoading,
   setActiveTab
 }) {
-  const userAttendance = attendanceLogs.filter(a => a.employee_id === currentUser?.id);
-  const userLeaves = leaves.filter(l => l.employee_id === currentUser?.id);
+  const userAttendance = (attendanceLogs || []).filter(a => a.employee_id === currentUser?.id);
+  const userLeaves = (leaves || []).filter(l => l.employee_id === currentUser?.id);
 
   return (
     <div className="space-y-6">

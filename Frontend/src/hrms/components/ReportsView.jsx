@@ -18,10 +18,6 @@ export default function ReportsView({ branches, employees }) {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
@@ -33,6 +29,10 @@ export default function ReportsView({ branches, employees }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
 
   const exportEmployeesCSV = () => {
     if (!employees || employees.length === 0) return;

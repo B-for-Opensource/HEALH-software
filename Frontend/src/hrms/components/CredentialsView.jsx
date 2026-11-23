@@ -40,22 +40,22 @@ export default function CredentialsView({
     document_name: 'medical_license_scan.pdf'
   });
 
-  useEffect(() => {
-    fetchCredentials();
-  }, [statusFilter]);
-
   const fetchCredentials = async () => {
     try {
       setLoading(true);
       const url = statusFilter ? `/api/credentials?status=${statusFilter}` : '/api/credentials';
       const res = await axios.get(url);
-      setCredentials(res.data);
+      setCredentials(res.data || []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchCredentials();
+  }, [statusFilter]);
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
@@ -91,7 +91,7 @@ export default function CredentialsView({
     }
   };
 
-  const expiringSoonCount = credentials.filter(c => c.status === 'Expiring Soon').length;
+  const expiringSoonCount = (credentials || []).filter(c => c.status === 'Expiring Soon').length;
 
   return (
     <div className="space-y-6">

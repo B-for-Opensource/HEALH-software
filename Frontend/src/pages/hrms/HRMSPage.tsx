@@ -14,10 +14,12 @@ import CredentialsViewRaw from '../../hrms/components/CredentialsView';
 import RecruitmentViewRaw from '../../hrms/components/RecruitmentView';
 import ReportsViewRaw from '../../hrms/components/ReportsView';
 import SelfServiceViewRaw from '../../hrms/components/SelfServiceView';
+import LoginPageRaw from '../../hrms/components/LoginPage';
 
 import { 
   setupMockBackend, 
   getAuthUser, 
+  setAuthUser,
   resetLocalState,
   DEMO_HR_ACCOUNTS 
 } from '../../hrms/services/mockBackend';
@@ -34,6 +36,7 @@ const CredentialsView = CredentialsViewRaw as React.FC<any>;
 const RecruitmentView = RecruitmentViewRaw as React.FC<any>;
 const ReportsView = ReportsViewRaw as React.FC<any>;
 const SelfServiceView = SelfServiceViewRaw as React.FC<any>;
+const LoginPage = LoginPageRaw as React.FC<any>;
 
 // Ensure mock adapter handles HRMS routes client-side seamlessly
 setupMockBackend();
@@ -43,7 +46,17 @@ export default function HRMSPage() {
   const navigate = useNavigate();
 
   const [currentUser, setCurrentUser] = useState<any>(() => getAuthUser() || DEMO_HR_ACCOUNTS[0]);
-  const [selectedBranch, setSelectedBranch] = useState<any>(null); // null means All Branches
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => true);
+  const [selectedBranch, setSelectedBranch] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const tabBranch = sessionStorage.getItem('HEAL_ACTIVE_BRANCH_TAB');
+      if (tabBranch === 'krn-branch-001' || tabBranch === '1') return 1;
+      if (tabBranch === 'clt-branch-002' || tabBranch === '2') return 2;
+      if (tabBranch === 'wyd-branch-003' || tabBranch === '3') return 3;
+      if (tabBranch === 'all' || tabBranch === '4') return null;
+    }
+    return null;
+  });
   const [usersList, setUsersList] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -198,6 +211,44 @@ export default function HRMSPage() {
     resetLocalState();
     loadBootstrapData();
     showToast('HR database reset to initial demo dataset!');
+  };
+
+  const handleBranchChange = (bId: any) => {
+    setSelectedBranch(bId);
+    if (typeof window !== 'undefined') {
+      let tabStr = 'all';
+      if (bId === 1 || bId === '1' || bId === 'krn-branch-001') tabStr = 'krn-branch-001';
+      else if (bId === 2 || bId === '2' || bId === 'clt-branch-002') tabStr = 'clt-branch-002';
+      else if (bId === 3 || bId === '3' || bId === 'wyd-branch-003') tabStr = 'wyd-branch-003';
+      sessionStorage.setItem('HEAL_ACTIVE_BRANCH_TAB', tabStr);
+    }
+  };
+
+  const handleSelectAccount = (account: any) => {
+    setCurrentUser(account);
+    setAuthUser(account);
+    if (account.branch_id) {
+      handleBranchChange(account.branch_id);
+    }
+    showToast(`Switched active HR persona to ${account.full_name} (${account.role})`);
+  };
+
+  const handleLogin = (account: any) => {
+    setCurrentUser(account);
+    setAuthUser(account);
+    setIsAuthenticated(true);
+    if (account.branch_id) {
+      handleBranchChange(account.branch_id);
+    } else {
+      handleBranchChange(null);
+    }
+    showToast(`Signed in successfully as ${account.full_name} (${account.role})`);
+  };
+
+  const handleLogout = () => {
+    setAuthUser(null);
+    setIsAuthenticated(false);
+    showToast('Signed out of HR session');
   };
 
   // Punch Action
@@ -410,6 +461,15 @@ export default function HRMSPage() {
 
   const expiringCredsCount = credentials.filter((c: any) => c.is_expiring_soon || c.is_expired).length;
 
+  if (!isAuthenticated) {
+    return (
+      <LoginPage 
+        onLogin={handleLogin}
+        onResetData={handleResetData}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col min-w-0 bg-slate-50 min-h-screen">
       {/* Toast Notification Banner */}
@@ -427,15 +487,15 @@ export default function HRMSPage() {
       <Navbar 
         branches={branches}
         selectedBranch={selectedBranch}
-        setSelectedBranch={setSelectedBranch}
+        setSelectedBranch={handleBranchChange}
         currentUser={currentUser}
         usersList={usersList}
-        setCurrentUser={setCurrentUser}
+        setCurrentUser={handleSelectAccount}
         onPunch={handlePunch}
         punchLoading={punchLoading}
         expiringCredsCount={expiringCredsCount}
         setActiveTab={setActiveTab}
-        onLogout={() => {}}
+        onLogout={handleLogout}
         onResetData={handleResetData}
       />
 

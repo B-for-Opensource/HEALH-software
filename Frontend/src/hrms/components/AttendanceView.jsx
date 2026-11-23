@@ -57,22 +57,13 @@ export default function AttendanceView({
 
   const [manualEntry, setManualEntry] = useState({
     employee_id: employees[0]?.id || 1,
-    branch_id: branches[0]?.id || 1,
+    branch_id: (branches || [])[0]?.id || 1,
     date: new Date().toISOString().split('T')[0],
     check_in: '09:00',
     check_out: '17:30',
     status: 'Present',
     notes: 'Admin manual timecard entry'
   });
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    loadRegularizations();
-  }, []);
 
   const loadRegularizations = async () => {
     try {
@@ -83,9 +74,18 @@ export default function AttendanceView({
     }
   };
 
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    loadRegularizations();
+  }, []);
+
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const filteredLogs = attendanceLogs.filter((log) => {
+  const filteredLogs = (attendanceLogs || []).filter((log) => {
     const matchBranch = !filterBranch || log.branch_id === parseInt(filterBranch);
     const matchDate = !filterDate || log.date === filterDate;
     const matchSearch = !searchTerm || 
@@ -94,8 +94,8 @@ export default function AttendanceView({
     return matchBranch && matchDate && matchSearch;
   });
 
-  const presentCount = attendanceLogs.filter(a => a.date === todayStr && ['Present', 'Late'].includes(a.status)).length;
-  const lateCount = attendanceLogs.filter(a => a.date === todayStr && a.status === 'Late').length;
+  const presentCount = (attendanceLogs || []).filter(a => a.date === todayStr && ['Present', 'Late'].includes(a.status)).length;
+  const lateCount = (attendanceLogs || []).filter(a => a.date === todayStr && a.status === 'Late').length;
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
@@ -113,7 +113,7 @@ export default function AttendanceView({
       alert('Regularization request submitted to HR for sign-off!');
       setShowRegularizeModal(false);
       setNewRegularize({
-        employee_id: currentUser?.id || employees[0]?.id || 1,
+        employee_id: currentUser?.id || (employees || [])[0]?.id || 1,
         request_type: 'Late Arrival Regularization',
         date: new Date().toISOString().split('T')[0],
         punch_time: '08:35',
@@ -138,8 +138,8 @@ export default function AttendanceView({
     }
   };
 
-  const pendingRegsCount = regularizations.filter((r) => r.status === 'Pending Approval').length;
-  const selectedPunchBranchObj = branches.find(b => b.id === parseInt(punchBranchId));
+  const pendingRegsCount = (regularizations || []).filter((r) => r.status === 'Pending Approval').length;
+  const selectedPunchBranchObj = (branches || []).find(b => b.id === parseInt(punchBranchId));
 
   return (
     <div className="space-y-6">

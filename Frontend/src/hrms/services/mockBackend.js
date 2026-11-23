@@ -115,8 +115,13 @@ export function resetLocalState() {
 // Auth state management
 export function getAuthUser() {
   try {
+    const sessionRaw = sessionStorage.getItem(AUTH_KEY);
+    if (sessionRaw) {
+      return JSON.parse(sessionRaw);
+    }
     const raw = localStorage.getItem(AUTH_KEY);
     if (raw) {
+      sessionStorage.setItem(AUTH_KEY, raw);
       return JSON.parse(raw);
     }
   } catch (e) {
@@ -129,12 +134,25 @@ export function setAuthUser(user) {
   try {
     if (user) {
       localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+      sessionStorage.setItem(AUTH_KEY, JSON.stringify(user));
     } else {
       localStorage.removeItem(AUTH_KEY);
+      sessionStorage.removeItem(AUTH_KEY);
     }
   } catch (e) {
     console.error('Failed to set auth user', e);
   }
+}
+
+// Branch ID resolver helper supporting both integer IDs and string slugs
+export function parseBranchId(val) {
+  if (val === undefined || val === null || val === '') return null;
+  if (val === 'krn-branch-001' || val === '1' || val === 1) return 1;
+  if (val === 'clt-branch-002' || val === '2' || val === 2) return 2;
+  if (val === 'wyd-branch-003' || val === '3' || val === 3) return 3;
+  if (val === 'all' || val === '4' || val === 4) return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
 }
 
 // Setup Axios mock adapter so all frontend axios requests execute purely client-side
@@ -146,12 +164,23 @@ export function setupMockBackend() {
   }
 
   axios.defaults.adapter = async (config) => {
-    const fullUrl = config.url || '';
+    let fullUrl = config.url || '';
+    if (config.baseURL && fullUrl.startsWith(config.baseURL)) {
+      fullUrl = fullUrl.slice(config.baseURL.length);
+    }
+    try {
+      if (fullUrl.startsWith('http://') || fullUrl.startsWith('https://')) {
+        const parsed = new URL(fullUrl);
+        fullUrl = parsed.pathname + parsed.search;
+      }
+    } catch (e) {}
+
     const [path, queryString] = fullUrl.split('?');
 
     // Only intercept HRMS specific routes; pass all clinical, patient, billing, and auth login calls to real server
     const isHrmsRoute = (
       path.startsWith('/api/hrms') ||
+      path.startsWith('/api/organization') ||
       path.startsWith('/api/dashboard/stats') ||
       path.startsWith('/api/departments') ||
       path.startsWith('/api/designations') ||
@@ -165,7 +194,14 @@ export function setupMockBackend() {
       path.startsWith('/api/reports/analytics') ||
       path.startsWith('/api/transfers') ||
       path.startsWith('/api/holidays') ||
-      (path === '/api/branches' && config.headers && config.headers['X-HRMS-Context'])
+      path.startsWith('/api/performance') ||
+      path.startsWith('/api/shifts/swaps') ||
+      path.startsWith('/api/sops') ||
+      path.startsWith('/api/onboarding') ||
+      path.startsWith('/api/announcements') ||
+      path.startsWith('/api/auth/users') ||
+      path.startsWith('/api/branches') ||
+      (path === '/api/auth/me' && (!config.headers || !config.headers['Authorization']))
     );
 
     if (!isHrmsRoute && originalAdapter) {
@@ -216,7 +252,7 @@ export function setupMockBackend() {
 
       // -------------------- DASHBOARD STATS --------------------
       if (path === '/api/dashboard/stats' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         const todayStr = new Date().toISOString().split('T')[0];
 
         let emps = state.employees.filter((e) => e.status === 'Active');
@@ -298,10 +334,11 @@ export function setupMockBackend() {
         return mockResponse(201, newBranch, config);
       }
 
-      const branchMatch = path.match(/^\/api\/branches\/(\d+)$/);
+      const branchMatch = path.match(/^\/api\/branches\/([a-zA-Z0-9_-]+)$/);
       if (branchMatch && method === 'put') {
-        const id = Number(branchMatch[1]);
-        const idx = state.branches.findIndex((b) => b.id === id);
+        const rawId = branchMatch[1];
+        const id = parseBranchId(rawId) || Number(rawId) || rawId;
+        const idx = state.branches.findIndex((b) => b.id === id || String(b.id) === String(rawId));
         if (idx >= 0) {
           state.branches[idx] = { ...state.branches[idx], ...body };
           saveLocalState(state);
@@ -311,12 +348,13 @@ export function setupMockBackend() {
       }
 
       if (branchMatch && method === 'delete') {
-        const id = Number(branchMatch[1]);
-        const empCount = state.employees.filter((e) => e.branch_id === id).length;
+        const rawId = branchMatch[1];
+        const id = parseBranchId(rawId) || Number(rawId) || rawId;
+        const empCount = state.employees.filter((e) => e.branch_id === id || String(e.branch_id) === String(rawId)).length;
         if (empCount > 0) {
           return mockResponse(400, { error: `Cannot delete branch with ${empCount} active employees.` }, config);
         }
-        state.branches = state.branches.filter((b) => b.id !== id);
+        state.branches = state.branches.filter((b) => b.id !== id && String(b.id) !== String(rawId));
         saveLocalState(state);
         return mockResponse(200, { message: 'Branch deleted' }, config);
       }
@@ -324,7 +362,7 @@ export function setupMockBackend() {
       // -------------------- ORGANIZATION & BRANCH EXTENSIONS --------------------
       // Holidays & Weekly Offs
       if (path === '/api/organization/holidays' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let list = state.holidays || [];
         if (branchId) {
           list = list.filter((h) => h.is_org_wide || h.branch_id === branchId);
@@ -372,7 +410,7 @@ export function setupMockBackend() {
 
       // Employee Branch Transfers
       if (path === '/api/organization/transfers' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let list = state.transfers || [];
         if (branchId) {
           list = list.filter((t) => t.from_branch_id === branchId || t.to_branch_id === branchId);
@@ -613,7 +651,7 @@ export function setupMockBackend() {
 
       // -------------------- EMPLOYEES --------------------
       if (path === '/api/employees' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let emps = state.employees;
         if (branchId) {
           emps = emps.filter((e) => e.branch_id === branchId);
@@ -705,7 +743,7 @@ export function setupMockBackend() {
 
       // -------------------- ATTENDANCE --------------------
       if (path === '/api/attendance' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         const dateFilter = queryParams.get('date');
         let atts = [...state.attendance];
         if (branchId) atts = atts.filter((a) => a.branch_id === branchId);
@@ -807,7 +845,7 @@ export function setupMockBackend() {
 
       // -------------------- ROSTERS & SHIFTS --------------------
       if (path === '/api/rosters' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let list = [...state.rosters];
         if (branchId) list = list.filter((r) => r.branch_id === branchId);
         return mockResponse(200, list, config);
@@ -859,7 +897,7 @@ export function setupMockBackend() {
 
       // -------------------- LEAVES --------------------
       if (path === '/api/leaves' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let list = [...state.leaves];
         if (branchId) list = list.filter((l) => l.branch_id === branchId);
         return mockResponse(200, list, config);
@@ -928,7 +966,7 @@ export function setupMockBackend() {
 
       // -------------------- CREDENTIALS --------------------
       if (path === '/api/credentials' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let list = [...state.credentials];
         if (branchId) {
           const empIds = new Set(state.employees.filter((e) => e.branch_id === branchId).map((e) => e.id));
@@ -1008,7 +1046,7 @@ export function setupMockBackend() {
 
       // -------------------- PAYROLL --------------------
       if (path === '/api/payroll/runs' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let runs = [...state.payroll_runs];
         if (branchId) runs = runs.filter((p) => p.branch_id === branchId || !p.branch_id);
         return mockResponse(200, runs, config);
@@ -1100,7 +1138,7 @@ export function setupMockBackend() {
 
       // -------------------- RECRUITMENT --------------------
       if (path === '/api/recruitment/jobs' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let jobs = state.job_requisitions.map((j) => {
           const appCount = state.job_applicants.filter((a) => a.job_id === j.id).length;
           return { ...j, applicants_count: appCount };
@@ -1204,7 +1242,7 @@ export function setupMockBackend() {
 
       // -------------------- REPORTS & ANALYTICS --------------------
       if (path === '/api/reports/analytics' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
 
         let branchList = state.branches;
         if (branchId) branchList = branchList.filter((b) => b.id === branchId);
@@ -1299,7 +1337,7 @@ export function setupMockBackend() {
 
       // -------------------- ATTENDANCE REGULARIZATION & EXCEPTIONS --------------------
       if (path === '/api/attendance/regularize' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let list = state.regularization_requests || [];
         if (branchId) list = list.filter((r) => r.branch_id === branchId);
         return mockResponse(200, list, config);
@@ -1356,7 +1394,7 @@ export function setupMockBackend() {
 
       // -------------------- SHIFT SWAPS & ROSTER LOCKING --------------------
       if (path === '/api/shifts/swaps' && method === 'get') {
-        const branchId = queryParams.get('branch_id') ? Number(queryParams.get('branch_id')) : null;
+        const branchId = parseBranchId(queryParams.get('branch_id'));
         let list = state.shift_swap_requests || [];
         if (branchId) list = list.filter((s) => s.branch_id === branchId);
         return mockResponse(200, list, config);
@@ -1454,4 +1492,8 @@ function mockResponse(status, data, config) {
     request: {}
   });
 }
+
+// Automatically initialize adapter immediately upon module load
+setupMockBackend();
+
 

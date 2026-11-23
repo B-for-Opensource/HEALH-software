@@ -52,8 +52,8 @@ export default function ShiftsView({
   });
 
   const [newRoster, setNewRoster] = useState({
-    employee_id: employees[0]?.id || 1,
-    branch_id: branches[0]?.id || 1,
+    employee_id: (employees || [])[0]?.id || 1,
+    branch_id: (branches || [])[0]?.id || 1,
     shift_date: new Date().toISOString().split('T')[0],
     shift_name: 'General OPD Morning Shift',
     start_time: '08:00',
@@ -61,10 +61,6 @@ export default function ShiftsView({
     is_on_call: false,
     notes: 'Standard clinical patient consultations'
   });
-
-  useEffect(() => {
-    loadShiftSwaps();
-  }, []);
 
   const loadShiftSwaps = async () => {
     try {
@@ -74,6 +70,10 @@ export default function ShiftsView({
       console.error('Error loading shift swaps', err);
     }
   };
+
+  useEffect(() => {
+    loadShiftSwaps();
+  }, []);
 
   const handleApproveSwap = async (id) => {
     try {

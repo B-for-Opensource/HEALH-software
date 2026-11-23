@@ -42,16 +42,21 @@ export default function PayrollView({ branches }) {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportBankFormat, setExportBankFormat] = useState('HDFC Bank CMS');
 
-  useEffect(() => {
-    fetchPayrollRuns();
-  }, []);
+  const fetchRunDetail = async (runId) => {
+    try {
+      const res = await axios.get(`/api/payroll/runs/${runId}`);
+      setSelectedRun(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchPayrollRuns = async () => {
     try {
       setLoading(true);
       const res = await axios.get('/api/payroll/runs');
-      setRuns(res.data);
-      if (res.data.length > 0) {
+      setRuns(res.data || []);
+      if (res.data && res.data.length > 0) {
         fetchRunDetail(res.data[0].id);
       }
     } catch (err) {
@@ -61,14 +66,9 @@ export default function PayrollView({ branches }) {
     }
   };
 
-  const fetchRunDetail = async (runId) => {
-    try {
-      const res = await axios.get(`/api/payroll/runs/${runId}`);
-      setSelectedRun(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  useEffect(() => {
+    fetchPayrollRuns();
+  }, []);
 
   const handleGenerateRun = async () => {
     try {
