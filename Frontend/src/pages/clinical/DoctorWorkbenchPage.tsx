@@ -12,7 +12,12 @@ import {
   Printer,
   Calendar,
   AlertCircle,
-  FileText
+  FileText,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  CalendarDays
 } from 'lucide-react';
 import { 
   appointmentsApi, 
@@ -44,6 +49,8 @@ export default function DoctorWorkbenchPage() {
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientHistory, setPatientHistory] = useState<any[]>([]);
+  const [patientPrescriptions, setPatientPrescriptions] = useState<any[]>([]);
+  const [showPastHistory, setShowPastHistory] = useState(false);
 
   // Clinical Consultation State
   const [vitals, setVitals] = useState({
@@ -100,13 +107,66 @@ export default function DoctorWorkbenchPage() {
       const pat = pRes?.data || pRes;
       setPatient(pat);
 
-      // Load patient history
+      // Load full patient medical history & prescriptions
       const hRes = await patientsApi.history(appt.patient_id);
-      setPatientHistory(Array.isArray(hRes) ? hRes : (hRes?.data || []));
+      const historyData = hRes?.data || hRes || {};
+      const pastConsults = Array.isArray(historyData) ? historyData : (historyData.consultations || []);
+      const pastRx = historyData.prescriptions || [];
+      setPatientHistory(pastConsults);
+      setPatientPrescriptions(pastRx);
 
-      // Prefill chief complaint from appointment if any
-      if (appt.purpose) {
-        setClinical((prev) => ({ ...prev, chief_complaints: appt.purpose || '' }));
+      // If this appointment was already consulted, load existing consultation notes & Rx
+      const existingConsult = pastConsults.find((c: any) => c.appointment_id === appt.id);
+      if (existingConsult) {
+        setVitals({
+          bp_systolic: existingConsult.bp_systolic ? String(existingConsult.bp_systolic) : '',
+          bp_diastolic: existingConsult.bp_diastolic ? String(existingConsult.bp_diastolic) : '',
+          pulse_rate: existingConsult.pulse_rate ? String(existingConsult.pulse_rate) : '',
+          temperature_f: existingConsult.temperature_f ? String(existingConsult.temperature_f) : '',
+          spo2_percent: existingConsult.spo2_percent ? String(existingConsult.spo2_percent) : '',
+          weight_kg: existingConsult.weight_kg ? String(existingConsult.weight_kg) : '',
+          height_cm: existingConsult.height_cm ? String(existingConsult.height_cm) : '',
+        });
+        setClinical({
+          known_conditions: existingConsult.known_conditions || '',
+          chief_complaints: existingConsult.chief_complaints || appt.purpose || '',
+          complaint_duration: existingConsult.complaint_duration || '',
+          skin_type: existingConsult.skin_type || 'Normal',
+          examination_notes: existingConsult.examination_notes || '',
+          diagnosis: existingConsult.diagnosis || '',
+          treatment_plan: existingConsult.treatment_plan || '',
+          doctor_private_notes: existingConsult.doctor_private_notes || '',
+          review_after_days: existingConsult.review_after_days ? String(existingConsult.review_after_days) : '7',
+          review_instructions: existingConsult.review_instructions || '',
+        });
+        const matchedRx = pastRx.find((p: any) => p.consultation_id === existingConsult.id) || existingConsult.prescription;
+        if (matchedRx?.items && Array.isArray(matchedRx.items)) {
+          setRxList(matchedRx.items);
+        }
+      } else {
+        // Reset consultation inputs for new consultation
+        setVitals({
+          bp_systolic: '',
+          bp_diastolic: '',
+          pulse_rate: '',
+          temperature_f: '',
+          spo2_percent: '',
+          weight_kg: '',
+          height_cm: '',
+        });
+        setClinical({
+          known_conditions: pat.known_conditions || '',
+          chief_complaints: appt.purpose || '',
+          complaint_duration: '',
+          skin_type: 'Normal',
+          examination_notes: '',
+          diagnosis: '',
+          treatment_plan: '',
+          doctor_private_notes: '',
+          review_after_days: '7',
+          review_instructions: '',
+        });
+        setRxList([]);
       }
     } catch (err) {
       console.error(err);
@@ -339,6 +399,18 @@ export default function DoctorWorkbenchPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {patientHistory.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPastHistory(!showPastHistory)}
+                    className="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-3 py-2 rounded-lg text-xs font-semibold shadow-xs transition"
+                    title="View Previous Consultations & Prescriptions for this patient"
+                  >
+                    <History className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Past Records ({patientHistory.length})</span>
+                    {showPastHistory ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
+                  </button>
+                )}
                 {rxList.length > 0 && (
                   <button
                     type="button"
@@ -369,6 +441,91 @@ export default function DoctorWorkbenchPage() {
                 </button>
               </div>
             </div>
+
+            {/* Expandable Past Medical Records & Prescriptions Panel */}
+            {showPastHistory && (
+              <div className="bg-amber-50/70 rounded-xl border border-amber-200 p-4 shadow-xs space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                  <div className="flex items-center gap-2">
+                    <History className="w-4 h-4 text-amber-700" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                      Previous Doctor Write-Ups & Prescriptions ({patientHistory.length} Past Visits)
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-amber-700 font-medium">Click "Copy Rx" to duplicate previous medicines into today's prescription</span>
+                </div>
+
+                <div className="space-y-3">
+                  {patientHistory.map((past: any, idx: number) => {
+                    const pastRxObj = patientPrescriptions.find((p: any) => p.consultation_id === past.id) || past.prescription;
+                    return (
+                      <div key={past.id || idx} className="bg-white rounded-lg border border-amber-200 p-3.5 shadow-2xs space-y-2 text-xs">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 flex items-center gap-1">
+                              <CalendarDays className="w-3.5 h-3.5 text-violet-600" />
+                              {formatDate(past.consult_date || past.created_at)}
+                            </span>
+                            {past.diagnosis && (
+                              <span className="bg-violet-100 text-violet-800 font-semibold px-2 py-0.5 rounded text-[11px]">
+                                {past.diagnosis}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            BP: {past.bp_systolic || '-'}/{past.bp_diastolic || '-'} mmHg · Pulse: {past.pulse_rate || '-'} · Wt: {past.weight_kg ? `${past.weight_kg}kg` : '-'}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-slate-700">
+                          <div>
+                            <span className="font-semibold text-slate-500 block">Chief Complaints & Exam:</span>
+                            <p className="text-slate-800 mt-0.5">{past.chief_complaints || '-'}</p>
+                            {past.examination_notes && (
+                              <p className="text-slate-600 italic mt-0.5">Exam: {past.examination_notes}</p>
+                            )}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-500 block">Treatment / Procedure Done:</span>
+                            <p className="text-slate-800 mt-0.5">{past.treatment_plan || '-'}</p>
+                          </div>
+                        </div>
+
+                        {/* Prescribed Medicines in that visit */}
+                        {pastRxObj?.items && pastRxObj.items.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[11px] font-bold text-violet-700 flex items-center gap-1">
+                                <Pill className="w-3 h-3" />
+                                Prescribed Medicines ({pastRxObj.items.length}):
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRxList((prev) => [...prev, ...pastRxObj.items]);
+                                  alert(`Copied ${pastRxObj.items.length} medicines into today's prescription builder!`);
+                                }}
+                                className="inline-flex items-center gap-1 text-[10px] font-bold bg-violet-50 hover:bg-violet-100 text-violet-700 px-2 py-0.5 rounded border border-violet-200 transition"
+                              >
+                                <Copy className="w-2.5 h-2.5" />
+                                Copy into Today's Rx
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {pastRxObj.items.map((med: any, mIdx: number) => (
+                                <span key={mIdx} className="bg-slate-50 border border-slate-200 px-2 py-1 rounded text-[11px] text-slate-800 font-medium">
+                                  <strong>{med.medicine_name}</strong> · {med.dosage} ({med.frequency}) · {med.duration_days}d
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Vitals Section */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">

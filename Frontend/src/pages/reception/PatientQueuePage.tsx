@@ -251,12 +251,32 @@ export default function PatientQueuePage() {
                           </>
                         )}
                         {item.status === 'Billing-Pending' && (
+                          <>
+                            <button
+                              onClick={() => navigate(`/clinical/workbench/${item.id}`)}
+                              className="inline-flex items-center gap-1 bg-violet-50 hover:bg-violet-100 text-violet-700 px-2 py-1 rounded text-xs font-medium transition"
+                              title="View Doctor Clinical Notes & Rx"
+                            >
+                              <Stethoscope className="w-3 h-3" />
+                              Rx
+                            </button>
+                            <button
+                              onClick={() => navigate(`/billing/pos?appointment_id=${item.id}&patient_id=${item.patient_id}`)}
+                              className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium transition"
+                            >
+                              <Receipt className="w-3 h-3" />
+                              Bill Patient
+                            </button>
+                          </>
+                        )}
+                        {item.status === 'Completed' && (
                           <button
-                            onClick={() => navigate(`/billing/pos?appointment_id=${item.id}&patient_id=${item.patient_id}`)}
-                            className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium transition"
+                            onClick={() => navigate(`/clinical/workbench/${item.id}`)}
+                            className="inline-flex items-center gap-1 bg-slate-100 hover:bg-violet-50 text-slate-700 hover:text-violet-700 px-2.5 py-1 rounded text-xs font-medium transition"
+                            title="View Doctor Consultation Notes & Prescribed Medicines"
                           >
-                            <Receipt className="w-3 h-3" />
-                            Bill Patient
+                            <Stethoscope className="w-3 h-3 text-violet-600" />
+                            <span>View Notes & Rx</span>
                           </button>
                         )}
                         {!['Completed', 'Cancelled'].includes(item.status) && (

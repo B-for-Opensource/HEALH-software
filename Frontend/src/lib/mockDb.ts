@@ -516,13 +516,23 @@ export const mockPatientsService = {
 
   history: async (id: string) => {
     const db = getDb();
-    const consults = db.consultations.filter((c) => c.patient_id === id);
-    const bills = db.bills.filter((b) => b.patient_id === id);
-    const sessions = db.package_sessions.filter((s) => s.patient_id === id);
+    const consults = (db.consultations || []).filter((c) => c.patient_id === id);
+    const prescriptions = (db.prescriptions || []).filter((p) => p.patient_id === id);
+    const bills = (db.bills || []).filter((b) => b.patient_id === id);
+    const sessions = (db.package_sessions || []).filter((s) => s.patient_id === id);
+
+    const enrichedConsults = consults.map((c) => {
+      const rx = prescriptions.find((p) => p.consultation_id === c.id);
+      return {
+        ...c,
+        prescription: rx || prescriptions[0] || null,
+      };
+    });
 
     return {
-      consultations: consults,
-      bills: bills,
+      consultations: enrichedConsults,
+      prescriptions,
+      bills,
       treatment_sessions: sessions,
     };
   },
