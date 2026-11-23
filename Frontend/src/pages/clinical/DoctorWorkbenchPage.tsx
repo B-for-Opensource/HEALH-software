@@ -75,6 +75,7 @@ export default function DoctorWorkbenchPage() {
   const [medSuggestions, setMedSuggestions] = useState<Medicine[]>([]);
   const [saving, setSaving] = useState(false);
   const [lastSavedConsultId, setLastSavedConsultId] = useState<string | null>(null);
+  const [showRxModal, setShowRxModal] = useState(false);
 
   // Load Queue
   useEffect(() => {
@@ -338,6 +339,16 @@ export default function DoctorWorkbenchPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {rxList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRxModal(true)}
+                    className="inline-flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-xs"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Preview & Print Rx
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleSaveConsultation(false)}
@@ -752,6 +763,116 @@ export default function DoctorWorkbenchPage() {
                 </div>
               </div>
             </div>
+
+            {/* PRESCRIPTION PRINT PREVIEW MODAL */}
+            {showRxModal && (
+              <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 print:hidden">
+                    <h2 className="text-sm font-bold text-slate-800">Prescription Slip (Rx) Preview</h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => window.print()}
+                        className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-xs"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        Print Prescription
+                      </button>
+                      <button
+                        onClick={() => setShowRxModal(false)}
+                        className="text-slate-400 hover:text-slate-600 p-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CLINIC LETTERHEAD */}
+                  <div className="text-center pb-3 border-b-2 border-slate-900">
+                    <h1 className="text-xl font-black text-slate-900 tracking-tight">HEAL CLINIC & AESTHETIC CARE</h1>
+                    <p className="text-xs text-slate-600 font-medium">Way to Markaz, Karanthoor, Calicut, Kerala · Ph: 0495-2720000</p>
+                    <p className="text-[11px] text-slate-500">Reg No: KL-MED-84920 · Email: info@healclinic.in</p>
+                  </div>
+
+                  {/* DOCTOR & PATIENT HEADER */}
+                  <div className="grid grid-cols-2 gap-4 text-xs py-2 border-b border-slate-200">
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">{selectedAppt?.doctor_name || 'Dr. Ananya Nair'}</p>
+                      <p className="text-slate-500">{selectedAppt?.department_name || 'Consultant Dermatologist'}</p>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <p className="font-semibold text-slate-900">{patient?.first_name} {patient?.last_name || ''}</p>
+                      <p className="text-slate-500 font-mono">OP: {patient?.op_no} · {patient?.gender}, {patient?.age_years ? `${patient?.age_years}y` : ''}</p>
+                      <p className="text-slate-400">Date: {new Date().toLocaleDateString('en-IN')}</p>
+                    </div>
+                  </div>
+
+                  {/* VITALS & DIAGNOSIS SUMMARY */}
+                  <div className="bg-slate-50 p-3 rounded-lg text-xs space-y-1 text-slate-700">
+                    {clinical.diagnosis && (
+                      <p><strong>Clinical Diagnosis:</strong> {clinical.diagnosis}</p>
+                    )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600">
+                      {vitals.bp_systolic && <span>BP: {vitals.bp_systolic}/{vitals.bp_diastolic} mmHg</span>}
+                      {vitals.pulse_rate && <span>Pulse: {vitals.pulse_rate} bpm</span>}
+                      {vitals.weight_kg && <span>Wt: {vitals.weight_kg} kg</span>}
+                      {bmi !== '-' && <span>BMI: {bmi}</span>}
+                      {patient?.known_allergies && <span className="text-rose-600 font-bold">⚠️ Allergy: {patient.known_allergies}</span>}
+                    </div>
+                  </div>
+
+                  {/* RX MEDICINES LIST */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-black text-violet-700 tracking-wider font-serif">℞ (Prescription)</p>
+                    <table className="w-full text-left text-xs border border-slate-200">
+                      <thead className="bg-slate-50 text-slate-700 uppercase font-semibold">
+                        <tr>
+                          <th className="py-2 px-3">#</th>
+                          <th className="py-2 px-3">Medicine / Formulation</th>
+                          <th className="py-2 px-3">Dosage</th>
+                          <th className="py-2 px-3">Frequency</th>
+                          <th className="py-2 px-3">Timing</th>
+                          <th className="py-2 px-3 text-center">Days</th>
+                          <th className="py-2 px-3">Special Advice</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {rxList.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="py-2 px-3 text-slate-400">{idx + 1}</td>
+                            <td className="py-2 px-3 font-semibold text-slate-900">{item.medicine_name}</td>
+                            <td className="py-2 px-3">{item.dosage}</td>
+                            <td className="py-2 px-3 font-mono font-bold text-violet-700">{item.frequency}</td>
+                            <td className="py-2 px-3 text-slate-600">{item.timing}</td>
+                            <td className="py-2 px-3 text-center">{item.duration_days}d</td>
+                            <td className="py-2 px-3 text-slate-500 italic">{item.special_instructions || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* ADVICE & REVIEW */}
+                  <div className="text-xs space-y-1 pt-2 border-t border-slate-200">
+                    {clinical.review_instructions && (
+                      <p><strong>General Advice:</strong> {clinical.review_instructions}</p>
+                    )}
+                    {reviewDateStr && (
+                      <p><strong>Next Review Follow-Up:</strong> {reviewDateStr} ({clinical.review_after_days} days)</p>
+                    )}
+                  </div>
+
+                  {/* DOCTOR SIGNATURE */}
+                  <div className="pt-6 flex justify-end text-right text-xs">
+                    <div>
+                      <div className="h-10 border-b border-slate-400 w-36 mb-1"></div>
+                      <p className="font-bold text-slate-800">{selectedAppt?.doctor_name || 'Consulting Doctor'}</p>
+                      <p className="text-[10px] text-slate-400">Authorized Medical Signature</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

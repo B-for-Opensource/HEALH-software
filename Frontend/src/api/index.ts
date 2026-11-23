@@ -1,119 +1,171 @@
-import axios from 'axios';
-import { useAuthStore } from '@/store/authStore';
+import {
+  mockAuthService,
+  mockPatientsService,
+  mockAppointmentsService,
+  mockConsultationsService,
+  mockPrescriptionsService,
+  mockMedicinesService,
+  mockBillingService,
+  mockPackagesService,
+  mockReportsService,
+  mockMastersService,
+  mockDaycareService,
+  mockPhotoService,
+  mockPharmacyService,
+  mockInventoryService,
+  mockHrmsService,
+  mockShiftService,
+  mockAuditService,
+  mockBranchService,
+  resetDatabaseToDefaults,
+  getDb,
+  subscribeToDbChanges,
+  getBranchShareableUrls,
+  exportDatabaseJson,
+  importDatabaseJson,
+} from '@/lib/mockDb';
 
-const rawBase = import.meta.env.VITE_API_URL || 'https://healh-software.onrender.com/api';
-const API_BASE = rawBase.replace(/\/+$/, '');
-
-export const api = axios.create({
-  baseURL: API_BASE,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
-});
-
-// Attach JWT token to every request
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
-  const branchId = useAuthStore.getState().user?.branch_id;
-  if (token) config.headers['Authorization'] = `Bearer ${token}`;
-  if (branchId) config.headers['X-Branch-Id'] = branchId;
-  return config;
-});
-
-// Global error handler
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      useAuthStore.getState().logout();
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
-    }
-    return Promise.reject(err);
-  }
-);
+export {
+  resetDatabaseToDefaults,
+  getDb,
+  mockBranchService,
+  subscribeToDbChanges,
+  getBranchShareableUrls,
+  exportDatabaseJson,
+  importDatabaseJson,
+};
 
 // ----- PATIENTS -----
 export const patientsApi = {
-  list:    (params?: Record<string, any>) => api.get('/patients', { params }).then(r => r.data),
-  search:  (q: string)                    => api.get('/patients/search', { params: { q } }).then(r => r.data),
-  get:     (id: string)                   => api.get(`/patients/${id}`).then(r => r.data),
-  history: (id: string)                   => api.get(`/patients/${id}/history`).then(r => r.data),
-  create:  (data: unknown)                => api.post('/patients', data).then(r => r.data),
-  update:  (id: string, data: unknown)    => api.put(`/patients/${id}`, data).then(r => r.data),
+  list:    (params?: Record<string, any>): Promise<any> => mockPatientsService.list(params),
+  search:  (q: string): Promise<any>                    => mockPatientsService.search(q),
+  get:     (id: string): Promise<any>                   => mockPatientsService.get(id),
+  history: (id: string): Promise<any>                   => mockPatientsService.history(id),
+  create:  (data: unknown): Promise<any>                => mockPatientsService.create(data),
+  update:  (id: string, data: unknown): Promise<any>    => mockPatientsService.update(id, data),
 };
 
 // ----- APPOINTMENTS -----
 export const appointmentsApi = {
-  queue:        (params?: Record<string, any>) => api.get('/appointments', { params }).then(r => r.data),
-  followups:    (params?: Record<string, any>) => api.get('/appointments/followups', { params }).then(r => r.data),
-  get:          (id: string)                   => api.get(`/appointments/${id}`).then(r => r.data),
-  create:       (data: unknown)                => api.post('/appointments', data).then(r => r.data),
-  updateStatus: (id: string, status: string)   => api.put(`/appointments/${id}/status`, { status }).then(r => r.data),
-  cancel:       (id: string)                   => api.delete(`/appointments/${id}`).then(r => r.data),
+  queue:        (params?: Record<string, any>): Promise<any> => mockAppointmentsService.queue(params),
+  followups:    (params?: Record<string, any>): Promise<any> => mockAppointmentsService.followups(params),
+  get:          (id: string): Promise<any>                   => mockAppointmentsService.get(id),
+  create:       (data: unknown): Promise<any>                => mockAppointmentsService.create(data),
+  updateStatus: (id: string, status: string): Promise<any>   => mockAppointmentsService.updateStatus(id, status),
+  cancel:       (id: string): Promise<any>                   => mockAppointmentsService.cancel(id),
 };
 
 // ----- CONSULTATIONS -----
 export const consultationsApi = {
-  get:      (id: string)        => api.get(`/consultations/${id}`).then(r => r.data),
-  getByAppointment: (apptId: string) => api.get(`/consultations?appointment_id=${apptId}`).then(r => r.data),
-  create:   (data: unknown)     => api.post('/consultations', data).then(r => r.data),
-  update:   (id: string, data: unknown) => api.put(`/consultations/${id}`, data).then(r => r.data),
-  finalize: (id: string)        => api.post(`/consultations/${id}/finalize`).then(r => r.data),
+  get:              (id: string): Promise<any>        => mockConsultationsService.get(id),
+  getByAppointment: (apptId: string): Promise<any>    => mockConsultationsService.getByAppointment(apptId),
+  create:           (data: unknown): Promise<any>     => mockConsultationsService.create(data),
+  update:           (id: string, data: unknown): Promise<any> => mockConsultationsService.update(id, data),
+  finalize:         (id: string): Promise<any>        => mockConsultationsService.finalize(id),
 };
 
 // ----- PRESCRIPTIONS -----
 export const prescriptionsApi = {
-  get:        (id: string)       => api.get(`/prescriptions/${id}`).then(r => r.data),
-  create:     (data: unknown)    => api.post('/prescriptions', data).then(r => r.data),
-  pdfUrl:     (id: string)       => `${API_BASE}/prescriptions/${id}/pdf`,
+  get:        (id: string): Promise<any>       => mockPrescriptionsService.get(id),
+  create:     (data: unknown): Promise<any>    => mockPrescriptionsService.create(data),
+  pdfUrl:     (id: string): string             => mockPrescriptionsService.pdfUrl(id),
 };
 
 // ----- MEDICINES -----
 export const medicinesApi = {
-  search: (q: string)     => api.get('/medicines/search', { params: { q } }).then(r => r.data),
-  list:   (params?: any)  => api.get('/medicines', { params }).then(r => r.data),
-  create: (data: unknown) => api.post('/medicines', data).then(r => r.data),
+  search: (q: string): Promise<any>     => mockMedicinesService.search(q),
+  list:   (params?: any): Promise<any>  => mockMedicinesService.list(),
+  create: (data: unknown): Promise<any> => mockMedicinesService.create(data),
 };
 
 // ----- BILLING -----
 export const billingApi = {
-  list:   (params?: Record<string, any>) => api.get('/bills', { params }).then(r => r.data),
-  get:    (id: string)                   => api.get(`/bills/${id}`).then(r => r.data),
-  create: (data: unknown)                => api.post('/bills', data).then(r => r.data),
-  pay:    (id: string, data: unknown)    => api.post(`/bills/${id}/pay`, data).then(r => r.data),
-  cancel: (id: string, reason: string)   => api.put(`/bills/${id}/cancel`, { reason }).then(r => r.data),
+  list:   (params?: Record<string, any>): Promise<any> => mockBillingService.list(params),
+  get:    (id: string): Promise<any>                   => mockBillingService.get(id),
+  create: (data: unknown): Promise<any>                => mockBillingService.create(data),
+  pay:    (id: string, data: unknown): Promise<any>    => mockBillingService.pay(id, data),
+  cancel: (id: string, reason: string): Promise<any>   => mockBillingService.cancel(id, reason),
 };
 
 // ----- PACKAGES -----
 export const packagesApi = {
-  list:        (params?: any) => api.get('/packages', { params }).then(r => r.data),
-  get:         (id: string)   => api.get(`/packages/${id}`).then(r => r.data),
-  create:      (data: unknown)=> api.post('/packages', data).then(r => r.data),
-  patientList: (patientId: string) => api.get('/patient-packages', { params: { patient_id: patientId } }).then(r => r.data),
-  sell:        (data: unknown)     => api.post('/patient-packages', data).then(r => r.data),
-  logSession:  (data: unknown)     => api.post('/sessions', data).then(r => r.data),
+  list:        (params?: any): Promise<any> => mockPackagesService.list(),
+  get:         (id: string): Promise<any>   => mockPackagesService.get(id),
+  create:      (data: unknown): Promise<any>=> mockPackagesService.create(data),
+  patientList: (patientId: string): Promise<any> => mockPackagesService.patientList(patientId),
+  sell:        (data: unknown): Promise<any>     => mockPackagesService.sell(data),
+  logSession:  (data: unknown): Promise<any>     => mockPackagesService.logSession(data),
+};
+
+// ----- DAYCARE & PROCEDURE LOUNGES -----
+export const daycareApi = {
+  listBeds:      (): Promise<any>                       => mockDaycareService.listBeds(),
+  allocateBed:   (bedId: string, data: any): Promise<any> => mockDaycareService.allocateBed(bedId, data),
+  dischargeBed:  (bedId: string): Promise<any>          => mockDaycareService.dischargeBed(bedId),
+  markSanitized: (bedId: string): Promise<any>          => mockDaycareService.markSanitized(bedId),
+};
+
+// ----- PHOTO VAULT -----
+export const photoApi = {
+  list: (): Promise<any>        => mockPhotoService.list(),
+  add:  (data: any): Promise<any> => mockPhotoService.add(data),
+};
+
+// ----- PHARMACY & DISPENSARY -----
+export const pharmacyApi = {
+  listBatches: (): Promise<any>               => mockPharmacyService.listBatches(),
+  addBatch:    (data: any): Promise<any>       => mockPharmacyService.addBatch(data),
+  dispenseRx:  (batchId: string, qty: number): Promise<any> => mockPharmacyService.dispenseRx(batchId, qty),
+};
+
+// ----- PROCUREMENT & INVENTORY -----
+export const inventoryApi = {
+  listVendors:    (): Promise<any>        => mockInventoryService.listVendors(),
+  createVendor:   (data: any): Promise<any> => mockInventoryService.createVendor(data),
+  listPOs:        (): Promise<any>        => mockInventoryService.listPOs(),
+  createPO:       (data: any): Promise<any> => mockInventoryService.createPO(data),
+  listTransfers:  (): Promise<any>        => mockInventoryService.listTransfers(),
+  createTransfer: (data: any): Promise<any> => mockInventoryService.createTransfer(data),
+};
+
+// ----- HRMS, ROSTER & COMMISSIONS -----
+export const hrmsApi = {
+  listRoster:        (): Promise<any>       => mockHrmsService.listRoster(),
+  listCommissions:   (): Promise<any>       => mockHrmsService.listCommissions(),
+  approveCommission: (id: string): Promise<any> => mockHrmsService.approveCommission(id),
+};
+
+// ----- CASHIER SHIFTS & DRAWER RECONCILIATION -----
+export const shiftApi = {
+  listShifts: (): Promise<any>            => mockShiftService.listShifts(),
+  closeShift: (id: string, data: any): Promise<any> => mockShiftService.closeShift(id, data),
+};
+
+// ----- AUDIT TRAIL -----
+export const auditApi = {
+  list: (): Promise<any> => mockAuditService.list(),
 };
 
 // ----- REPORTS & DASHBOARD -----
 export const reportsApi = {
-  collection: (params?: Record<string, any>) => api.get('/reports/collection', { params }).then(r => r.data),
-  billing:    (params?: Record<string, any>) => api.get('/reports/billing',    { params }).then(r => r.data),
-  doctor:     (params?: Record<string, any>) => api.get('/reports/doctor',     { params }).then(r => r.data),
-  trend:      (params?: Record<string, any>) => api.get('/reports/trend',      { params }).then(r => r.data),
-  dashboard:  ()                             => api.get('/dashboard').then(r => r.data),
+  collection: (params?: Record<string, any>): Promise<any> => mockReportsService.collection(params),
+  billing:    (params?: Record<string, any>): Promise<any> => mockReportsService.billing(),
+  doctor:     (params?: Record<string, any>): Promise<any> => mockReportsService.doctor(),
+  trend:      (): Promise<any>                             => mockReportsService.trend(),
+  dashboard:  (): Promise<any>                             => mockReportsService.dashboard(),
 };
 
-// ----- MASTERS / DOCTORS & DEPARTMENTS -----
+// ----- MASTERS / DOCTORS & DEPARTMENTS & USERS -----
 export const mastersApi = {
-  doctors:     () => api.get('/staff', { params: { role: 'Doctor' } }).then(r => r.data),
-  staff:       (params?: any) => api.get('/staff', { params }).then(r => r.data),
-  departments: () => api.get('/departments').then(r => r.data),
+  doctors:     (): Promise<any> => mockMastersService.doctors(),
+  staff:       (params?: any): Promise<any> => mockMastersService.staff(params),
+  departments: (): Promise<any> => mockMastersService.departments(),
+  createStaff: (data: unknown): Promise<any> => mockMastersService.createStaff(data),
 };
 
 // ----- AUTH -----
 export const authApi = {
-  login:          (data: { username: string; password: string }) => api.post('/auth/login', data).then(r => r.data),
-  me:             ()         => api.get('/auth/me').then(r => r.data),
-  changePassword: (data: unknown) => api.post('/auth/change-password', data).then(r => r.data),
+  login:          (data: { username: string; password: string }): Promise<any> => mockAuthService.login(data),
+  me:             (): Promise<any>         => mockAuthService.me(),
+  changePassword: (data: unknown): Promise<any> => mockAuthService.changePassword(),
 };

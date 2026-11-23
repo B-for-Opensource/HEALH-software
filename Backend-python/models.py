@@ -325,3 +325,166 @@ class AuditLog(Base):
     new_values = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)
     remarks = Column(Text, nullable=True)
+
+# -------------------- HRMS MODELS --------------------
+class Designation(Base):
+    __tablename__ = "designations"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    title = Column(String(100), nullable=False)
+    department_id = Column(String(32), ForeignKey("departments.id"), nullable=True)
+    category = Column(String(50), default="Clinical")  # Clinical, Administrative, Support
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class MedicalCredential(Base):
+    __tablename__ = "medical_credentials"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    employee_id = Column(String(32), nullable=False)
+    license_type = Column(String(100), nullable=False)  # Medical Council, MOH / DHA, Cosmetology Board, BLS/ACLS
+    license_number = Column(String(100), nullable=False)
+    issuing_authority = Column(String(150), nullable=False)
+    issue_date = Column(Date, nullable=False)
+    expiry_date = Column(Date, nullable=False)
+    status = Column(String(30), default="Valid")  # Valid, Expiring Soon, Expired
+    document_name = Column(String(200), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Attendance(Base):
+    __tablename__ = "attendance"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    employee_id = Column(String(32), nullable=False)
+    branch_id = Column(String(32), ForeignKey("branches.id"), nullable=False)
+    date = Column(Date, default=date.today, nullable=False)
+    punch_in = Column(DateTime, nullable=True)
+    punch_out = Column(DateTime, nullable=True)
+    work_hours = Column(Float, default=0.0)
+    status = Column(String(30), default="Present")  # Present, Late, Half Day, Absent, On Leave
+    method = Column(String(30), default="Web Punch")  # Web Punch, Biometric, Geo Tagged
+    ip_or_location = Column(String(100), default="Clinic Terminal")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class ShiftRoster(Base):
+    __tablename__ = "shift_rosters"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    employee_id = Column(String(32), nullable=False)
+    branch_id = Column(String(32), ForeignKey("branches.id"), nullable=False)
+    shift_date = Column(Date, nullable=False)
+    shift_name = Column(String(80), nullable=False)
+    start_time = Column(String(20), default="08:00 AM")
+    end_time = Column(String(20), default="04:00 PM")
+    is_on_call = Column(Boolean, default=False)
+    notes = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class LeaveRequest(Base):
+    __tablename__ = "leave_requests"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    employee_id = Column(String(32), nullable=False)
+    branch_id = Column(String(32), ForeignKey("branches.id"), nullable=False)
+    leave_type = Column(String(50), nullable=False)  # Casual, Sick, Annual, Emergency, CME Conference
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    total_days = Column(Integer, default=1)
+    reason = Column(Text, nullable=False)
+    substitute_doctor_id = Column(String(32), nullable=True)
+    status = Column(String(30), default="Pending")  # Pending, Approved, Rejected
+    applied_at = Column(DateTime, default=datetime.utcnow)
+    approved_by = Column(String(100), nullable=True)
+    reviewer_comment = Column(String(255), nullable=True)
+
+class PayrollRun(Base):
+    __tablename__ = "payroll_runs"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    period_label = Column(String(50), nullable=False)  # e.g. "November 2026"
+    branch_id = Column(String(32), ForeignKey("branches.id"), nullable=True)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    total_gross = Column(Float, default=0.0)
+    total_net = Column(Float, default=0.0)
+    status = Column(String(30), default="Processed")  # Draft, Processed, Approved, Paid
+    processed_date = Column(DateTime, default=datetime.utcnow)
+
+class PayrollItem(Base):
+    __tablename__ = "payroll_items"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    payroll_run_id = Column(String(32), ForeignKey("payroll_runs.id"), nullable=False)
+    employee_id = Column(String(32), nullable=False)
+    base_salary = Column(Float, default=0.0)
+    aesthetic_commission = Column(Float, default=0.0)
+    consultation_fees = Column(Float, default=0.0)
+    overtime_allowance = Column(Float, default=0.0)
+    deductions = Column(Float, default=0.0)
+    net_payout = Column(Float, default=0.0)
+    status = Column(String(30), default="Paid")
+
+class JobRequisition(Base):
+    __tablename__ = "job_requisitions"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    title = Column(String(120), nullable=False)
+    branch_id = Column(String(32), ForeignKey("branches.id"), nullable=False)
+    department_id = Column(String(32), ForeignKey("departments.id"), nullable=False)
+    vacancies = Column(Integer, default=1)
+    status = Column(String(30), default="Open")  # Open, On Hold, Closed
+    salary_range = Column(String(80), default="$4,000 - $6,500")
+    requirements = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class JobApplicant(Base):
+    __tablename__ = "job_applicants"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    requisition_id = Column(String(32), ForeignKey("job_requisitions.id"), nullable=False)
+    full_name = Column(String(100), nullable=False)
+    email = Column(String(100), nullable=False)
+    phone = Column(String(30), nullable=True)
+    stage = Column(String(40), default="Screening")  # Screening, Clinical Interview, Practical Trial, Offer, Hired, Rejected
+    experience_years = Column(Float, default=2.0)
+    applied_date = Column(Date, default=date.today)
+    notes = Column(Text, nullable=True)
+
+class HolidayCalendar(Base):
+    __tablename__ = "holiday_calendars"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    title = Column(String(120), nullable=False)
+    date = Column(Date, nullable=False)
+    branch_id = Column(String(32), ForeignKey("branches.id"), nullable=True)
+    holiday_type = Column(String(50), default="National Holiday")
+    is_org_wide = Column(Boolean, default=True)
+    affects_payroll = Column(Boolean, default=True)
+
+class EmployeeTransfer(Base):
+    __tablename__ = "employee_transfers"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    employee_id = Column(String(32), nullable=False)
+    from_branch_id = Column(String(32), ForeignKey("branches.id"), nullable=False)
+    to_branch_id = Column(String(32), ForeignKey("branches.id"), nullable=False)
+    department_id = Column(String(32), ForeignKey("departments.id"), nullable=True)
+    new_reporting_manager_id = Column(String(32), nullable=True)
+    transfer_date = Column(Date, default=date.today)
+    effective_date = Column(Date, default=date.today)
+    reason = Column(Text, nullable=False)
+    status = Column(String(30), default="Pending Approval")
+    approved_by = Column(String(100), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+
+class BranchManagerAssignment(Base):
+    __tablename__ = "branch_manager_assignments"
+
+    id = Column(String(32), primary_key=True, default=gen_id)
+    branch_id = Column(String(32), ForeignKey("branches.id"), nullable=False)
+    manager_employee_id = Column(String(32), nullable=False)
+    start_date = Column(Date, default=date.today)
+    end_date = Column(Date, nullable=True)
+    is_active = Column(Boolean, default=True)
+    assigned_by = Column(String(100), default="Super Admin")
+    responsibilities = Column(Text, nullable=True)

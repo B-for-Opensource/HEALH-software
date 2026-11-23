@@ -119,6 +119,10 @@ try {
             require_once HEAL_ROOT . '/api/reports.php';
             break;
 
+        case 'hrms':
+            require_once HEAL_ROOT . '/api/hrms.php';
+            break;
+
         case 'staff':
             require_once HEAL_ROOT . '/api/staff.php';
             break;

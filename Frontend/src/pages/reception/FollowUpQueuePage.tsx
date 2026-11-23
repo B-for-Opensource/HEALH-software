@@ -136,7 +136,7 @@ export default function FollowUpQueuePage() {
                       {item.op_no || '-'}
                     </td>
                     <td className="py-3.5 px-4 text-slate-800">
-                      Dr. {item.doctor_name || 'Staff'}
+                      {item.doctor_name?.startsWith('Dr.') ? item.doctor_name : `Dr. ${item.doctor_name || 'Staff'}`}
                     </td>
                     <td className="py-3.5 px-4 font-medium text-slate-700">
                       {formatDate(item.review_date || item.appointment_date)}

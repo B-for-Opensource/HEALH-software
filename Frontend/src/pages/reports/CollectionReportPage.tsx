@@ -182,7 +182,7 @@ export default function CollectionReportPage() {
                       <div className="text-[11px] font-mono text-slate-400">{r.op_no}</div>
                     </td>
                     <td className="py-3 px-4 text-slate-700">
-                      Dr. {r.doctor_name || 'Clinic Team'}
+                      {r.doctor_name?.startsWith('Dr.') ? r.doctor_name : `Dr. ${r.doctor_name || 'Clinic Team'}`}
                     </td>
                     <td className="py-3 px-4 text-right font-semibold text-slate-800">
                       {formatCurrency(r.net_amount)}

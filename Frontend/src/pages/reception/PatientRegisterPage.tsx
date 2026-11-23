@@ -300,7 +300,7 @@ export default function PatientRegisterPage() {
                   <option value="">Select Doctor</option>
                   {doctors.map((d) => (
                     <option key={d.id} value={d.id}>
-                      Dr. {d.full_name} ({d.department_name || 'General'})
+                      {d.full_name?.startsWith('Dr.') ? d.full_name : `Dr. ${d.full_name}`} ({d.department_name || d.specialisation || 'General'})
                     </option>
                   ))}
                 </select>

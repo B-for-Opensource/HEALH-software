@@ -27,7 +27,8 @@ from routers import (
     dashboard,
     staff,
     departments,
-    photos
+    photos,
+    hrms
 )
 
 @asynccontextmanager
@@ -102,6 +103,7 @@ app.include_router(dashboard.router)
 app.include_router(staff.router)
 app.include_router(departments.router)
 app.include_router(photos.router)
+app.include_router(hrms.router)
 
 @app.get("/")
 def root():

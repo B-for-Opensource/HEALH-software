@@ -400,6 +400,98 @@ CREATE TABLE IF NOT EXISTS `audit_log` (
   INDEX (`entity_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- -----------------------------------------------------------
+-- 12. HRMS: DESIGNATIONS, ATTENDANCE, ROSTERS, LEAVES, PAYROLL, CREDENTIALS
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `designations` (
+  `id`            CHAR(32) PRIMARY KEY,
+  `title`         VARCHAR(100) NOT NULL,
+  `department_id` CHAR(32),
+  `category`      VARCHAR(50) DEFAULT 'Clinical',
+  `created_at`    DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `medical_credentials` (
+  `id`                CHAR(32) PRIMARY KEY,
+  `employee_id`       CHAR(32) NOT NULL,
+  `license_type`      VARCHAR(100) NOT NULL,
+  `license_number`    VARCHAR(100) NOT NULL,
+  `issuing_authority` VARCHAR(150) NOT NULL,
+  `issue_date`        DATE NOT NULL,
+  `expiry_date`       DATE NOT NULL,
+  `status`            VARCHAR(30) DEFAULT 'Valid',
+  `document_name`     VARCHAR(200),
+  `created_at`        DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `attendance` (
+  `id`             CHAR(32) PRIMARY KEY,
+  `employee_id`    CHAR(32) NOT NULL,
+  `branch_id`      CHAR(32) NOT NULL,
+  `date`           DATE NOT NULL,
+  `punch_in`       DATETIME,
+  `punch_out`      DATETIME,
+  `work_hours`     DECIMAL(5,2) DEFAULT 0.00,
+  `status`         VARCHAR(30) DEFAULT 'Present',
+  `method`         VARCHAR(30) DEFAULT 'Web Punch',
+  `ip_or_location` VARCHAR(100) DEFAULT 'Clinic Terminal',
+  `created_at`     DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `shift_rosters` (
+  `id`          CHAR(32) PRIMARY KEY,
+  `employee_id` CHAR(32) NOT NULL,
+  `branch_id`   CHAR(32) NOT NULL,
+  `shift_date`  DATE NOT NULL,
+  `shift_name`  VARCHAR(80) NOT NULL,
+  `start_time`  VARCHAR(20) DEFAULT '08:00 AM',
+  `end_time`    VARCHAR(20) DEFAULT '04:00 PM',
+  `is_on_call`  TINYINT(1) DEFAULT 0,
+  `notes`       VARCHAR(255),
+  `created_at`  DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `leave_requests` (
+  `id`                   CHAR(32) PRIMARY KEY,
+  `employee_id`          CHAR(32) NOT NULL,
+  `branch_id`            CHAR(32) NOT NULL,
+  `leave_type`           VARCHAR(50) NOT NULL,
+  `start_date`           DATE NOT NULL,
+  `end_date`             DATE NOT NULL,
+  `total_days`           INT DEFAULT 1,
+  `reason`               TEXT NOT NULL,
+  `substitute_doctor_id` CHAR(32),
+  `status`               VARCHAR(30) DEFAULT 'Pending',
+  `applied_at`           DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `approved_by`          VARCHAR(100),
+  `reviewer_comment`     VARCHAR(255)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `payroll_runs` (
+  `id`             CHAR(32) PRIMARY KEY,
+  `period_label`   VARCHAR(50) NOT NULL,
+  `branch_id`      CHAR(32),
+  `start_date`     DATE NOT NULL,
+  `end_date`       DATE NOT NULL,
+  `total_gross`    DECIMAL(12,2) DEFAULT 0.00,
+  `total_net`      DECIMAL(12,2) DEFAULT 0.00,
+  `status`         VARCHAR(30) DEFAULT 'Processed',
+  `processed_date` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `payroll_items` (
+  `id`                   CHAR(32) PRIMARY KEY,
+  `payroll_run_id`       CHAR(32) NOT NULL,
+  `employee_id`          CHAR(32) NOT NULL,
+  `base_salary`          DECIMAL(10,2) DEFAULT 0.00,
+  `aesthetic_commission` DECIMAL(10,2) DEFAULT 0.00,
+  `consultation_fees`    DECIMAL(10,2) DEFAULT 0.00,
+  `overtime_allowance`   DECIMAL(10,2) DEFAULT 0.00,
+  `deductions`           DECIMAL(10,2) DEFAULT 0.00,
+  `net_payout`           DECIMAL(10,2) DEFAULT 0.00,
+  `status`               VARCHAR(30) DEFAULT 'Paid'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================

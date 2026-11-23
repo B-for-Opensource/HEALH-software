@@ -56,6 +56,10 @@ export interface Staff {
   department_id?: string;
   department_name?: string;
   doctor_reg_no?: string;
+  specialisation?: string;
+  username?: string;
+  branch_id?: string;
+  branch_name?: string;
   phone?: string;
   email?: string;
   is_active: boolean;

@@ -188,3 +188,119 @@ def seed_database(db: Session):
             db.commit()
     except Exception:
         db.rollback()
+
+    # 7. Seed HRMS Designations
+    try:
+        if db.query(models.Designation).count() == 0:
+            desigs = [
+                models.Designation(id="desig-derm", title="Senior Consultant Dermatologist", category="Clinical"),
+                models.Designation(id="desig-gp", title="General Physician & Family Doctor", category="Clinical"),
+                models.Designation(id="desig-aesth", title="Clinical Aesthetician & Laser Operator", category="Clinical"),
+                models.Designation(id="desig-nurse", title="Staff Nurse & Treatment Coordinator", category="Clinical"),
+                models.Designation(id="desig-rec", title="Front Desk Receptionist", category="Administrative"),
+                models.Designation(id="desig-cash", title="Billing Specialist & Cashier", category="Administrative"),
+            ]
+            db.add_all(desigs)
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    # 8. Seed Medical Credentials
+    try:
+        if db.query(models.MedicalCredential).count() == 0:
+            creds = [
+                models.MedicalCredential(
+                    id="cred-001",
+                    employee_id="doc-001",
+                    license_type="Travancore-Cochin Medical Council (TCMC)",
+                    license_number="TCMC-54321",
+                    issuing_authority="Kerala State Medical Council",
+                    issue_date=date(2021, 1, 15),
+                    expiry_date=date(2027, 1, 15),
+                    status="Valid",
+                    document_name="tcmc_ananya_nair.pdf"
+                ),
+                models.MedicalCredential(
+                    id="cred-002",
+                    employee_id="doc-001",
+                    license_type="Board Certification in Aesthetic Laser Medicine",
+                    license_number="AESTH-LASER-9921",
+                    issuing_authority="Indian Association of Dermatologists & Venereologists (IADVL)",
+                    issue_date=date(2022, 6, 1),
+                    expiry_date=date.today() + timedelta(days=25), # Expiring soon alert demo
+                    status="Expiring Soon",
+                    document_name="laser_cert_ananya.pdf"
+                ),
+                models.MedicalCredential(
+                    id="cred-003",
+                    employee_id="doc-002",
+                    license_type="State Medical Registration",
+                    license_number="TCMC-61204",
+                    issuing_authority="Kerala State Medical Council",
+                    issue_date=date(2020, 3, 10),
+                    expiry_date=date(2028, 3, 10),
+                    status="Valid",
+                    document_name="tcmc_rahul_menon.pdf"
+                ),
+            ]
+            db.add_all(creds)
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    # 9. Seed Shift Rosters
+    try:
+        if db.query(models.ShiftRoster).count() == 0:
+            today = date.today()
+            rosters = [
+                models.ShiftRoster(
+                    id="roster-001",
+                    employee_id="doc-001",
+                    branch_id="krn-branch-001",
+                    shift_date=today,
+                    shift_name="Morning Aesthetic & Laser OPD",
+                    start_time="09:00 AM",
+                    end_time="01:30 PM",
+                    is_on_call=False,
+                    notes="Diode Laser & Chemical Peels"
+                ),
+                models.ShiftRoster(
+                    id="roster-002",
+                    employee_id="doc-002",
+                    branch_id="krn-branch-001",
+                    shift_date=today,
+                    shift_name="Evening Family Medicine OPD",
+                    start_time="03:00 PM",
+                    end_time="08:00 PM",
+                    is_on_call=True,
+                    notes="General consultations & followups"
+                ),
+            ]
+            db.add_all(rosters)
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    # 10. Seed Leave Requests
+    try:
+        if db.query(models.LeaveRequest).count() == 0:
+            today = date.today()
+            leaves = [
+                models.LeaveRequest(
+                    id="leave-001",
+                    employee_id="doc-001",
+                    branch_id="krn-branch-001",
+                    leave_type="CME Conference",
+                    start_date=today + timedelta(days=7),
+                    end_date=today + timedelta(days=9),
+                    total_days=3,
+                    reason="Attending National Aesthetic Dermatology Summit 2026",
+                    substitute_doctor_id="doc-002",
+                    status="Pending",
+                    applied_at=datetime.utcnow()
+                )
+            ]
+            db.add_all(leaves)
+            db.commit()
+    except Exception:
+        db.rollback()

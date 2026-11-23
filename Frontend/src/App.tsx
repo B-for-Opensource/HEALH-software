@@ -1,61 +1,114 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import axios from 'axios';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { useAuthStore } from '@/store/authStore';
+import { mockBranchService } from '@/api';
 
-// Pages
+// Core Pages
 import LoginPage from '@/pages/auth/LoginPage';
 import PatientQueuePage from '@/pages/reception/PatientQueuePage';
 import PatientRegisterPage from '@/pages/reception/PatientRegisterPage';
-import PatientDirectoryPage from '@/pages/masters/PatientDirectoryPage';
-import DoctorWorkbenchPage from '@/pages/clinical/DoctorWorkbenchPage';
-import BillingPOSPage from '@/pages/billing/BillingPOSPage';
-import DashboardPage from '@/pages/reports/DashboardPage';
-import PackagesPage from '@/pages/aesthetic/PackagesPage';
+import AppointmentCalendarPage from '@/pages/reception/AppointmentCalendarPage';
 import FollowUpQueuePage from '@/pages/reception/FollowUpQueuePage';
+import DoctorWorkbenchPage from '@/pages/clinical/DoctorWorkbenchPage';
+import PackagesPage from '@/pages/aesthetic/PackagesPage';
+import PhotoVaultPage from '@/pages/aesthetic/PhotoVaultPage';
+import DaycareLoungePage from '@/pages/daycare/DaycareLoungePage';
+import BillingPOSPage from '@/pages/billing/BillingPOSPage';
+import CashierShiftPage from '@/pages/billing/CashierShiftPage';
+import LedgerPage from '@/pages/billing/LedgerPage';
+import PharmacyDispensaryPage from '@/pages/pharmacy/PharmacyDispensaryPage';
+import ProcurementInventoryPage from '@/pages/inventory/ProcurementInventoryPage';
+import DutyRosterCommissionPage from '@/pages/hrms/DutyRosterCommissionPage';
+import HRMSPage from '@/pages/hrms/HRMSPage';
+import DashboardPage from '@/pages/reports/DashboardPage';
 import CollectionReportPage from '@/pages/reports/CollectionReportPage';
+import BillingReportPage from '@/pages/reports/BillingReportPage';
+import AuditTrailPage from '@/pages/reports/AuditTrailPage';
+import PatientDirectoryPage from '@/pages/masters/PatientDirectoryPage';
+import DoctorsStaffPage from '@/pages/masters/DoctorsStaffPage';
+import MedicineMasterPage from '@/pages/masters/MedicineMasterPage';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 30, retry: 1 } },
 });
 
-export default function App() {
-  // Keep-alive health check ping every 2 minutes (prevents Render instance from sleeping)
-  useEffect(() => {
-    const pingHealth = () => {
-      const base = import.meta.env.VITE_API_URL || 'https://healh-software.onrender.com/api';
-      const cleanBase = base.replace(/\/+$/, '');
-      axios.get(`${cleanBase}/health`).catch(() => {});
-    };
-    pingHealth();
-    const interval = setInterval(pingHealth, 120000); // 2 minutes
-    return () => clearInterval(interval);
-  }, []);
+// Dedicated Gateway for Investor Clean Links: /1, /2, /3, /4
+function BranchRouteHandler({ branchId, target = "/reception/queue" }: { branchId: string; target?: string }) {
+  const { isAuthenticated } = useAuthStore();
+  
+  mockBranchService.setActiveBranch(branchId);
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('HEAL_ACTIVE_BRANCH_TAB', branchId);
+  }
 
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Navigate to={target} replace />;
+}
+
+export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
 
+          {/* Clean Investor Branch Entry Routes */}
+          <Route path="/1" element={<BranchRouteHandler branchId="krn-branch-001" target="/reception/queue" />} />
+          <Route path="/2" element={<BranchRouteHandler branchId="clt-branch-002" target="/reception/queue" />} />
+          <Route path="/3" element={<BranchRouteHandler branchId="wyd-branch-003" target="/reception/queue" />} />
+          <Route path="/4" element={<BranchRouteHandler branchId="all" target="/reports/dashboard" />} />
+
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Navigate to="/reception/queue" replace />} />
-            <Route path="/reception/queue"           element={<PatientQueuePage />} />
-            <Route path="/reception/register"        element={<PatientRegisterPage />} />
-            <Route path="/reception/followups"       element={<FollowUpQueuePage />} />
-            <Route path="/clinical/workbench"        element={<DoctorWorkbenchPage />} />
+            
+            {/* 1. Reception & Outpatients */}
+            <Route path="/reception/register"         element={<PatientRegisterPage />} />
+            <Route path="/reception/queue"            element={<PatientQueuePage />} />
+            <Route path="/reception/calendar"         element={<AppointmentCalendarPage />} />
+            <Route path="/reception/followups"        element={<FollowUpQueuePage />} />
+
+            {/* 2. Clinical EMR */}
+            <Route path="/clinical/workbench"         element={<DoctorWorkbenchPage />} />
             <Route path="/clinical/workbench/:apptId" element={<DoctorWorkbenchPage />} />
-            <Route path="/aesthetic/packages"        element={<PackagesPage />} />
-            <Route path="/billing/pos"               element={<BillingPOSPage />} />
-            <Route path="/billing/pos/:billId"       element={<BillingPOSPage />} />
-            <Route path="/billing/ledger"            element={<DashboardPage />} />
-            <Route path="/reports/dashboard"         element={<DashboardPage />} />
-            <Route path="/reports/collection"        element={<CollectionReportPage />} />
-            <Route path="/reports/billing"           element={<DashboardPage />} />
-            <Route path="/masters/patients"          element={<PatientDirectoryPage />} />
-            <Route path="/masters/doctors"           element={<DashboardPage />} />
-            <Route path="/masters/medicines"         element={<DashboardPage />} />
+
+            {/* 3. Aesthetic Care */}
+            <Route path="/aesthetic/packages"         element={<PackagesPage />} />
+            <Route path="/aesthetic/photos"           element={<PhotoVaultPage />} />
+
+            {/* 4. Daycare & Minor Procedures */}
+            <Route path="/daycare/lounges"            element={<DaycareLoungePage />} />
+
+            {/* 5. Billing & POS */}
+            <Route path="/billing/pos"                element={<BillingPOSPage />} />
+            <Route path="/billing/pos/:billId"        element={<BillingPOSPage />} />
+            <Route path="/billing/shifts"             element={<CashierShiftPage />} />
+            <Route path="/billing/ledger"             element={<LedgerPage />} />
+
+            {/* 6. Pharmacy & Dispensary */}
+            <Route path="/pharmacy/dispensary"        element={<PharmacyDispensaryPage />} />
+
+            {/* 7. Procurement & Consumables */}
+            <Route path="/inventory/transfers"        element={<ProcurementInventoryPage />} />
+
+            {/* 8. HRMS & Workforce Management Suite */}
+            <Route path="/hrms"                       element={<HRMSPage />} />
+            <Route path="/hrms/:tab"                  element={<HRMSPage />} />
+            <Route path="/hrms/commissions"           element={<DutyRosterCommissionPage />} />
+
+            {/* 9. Reports & Forensic Audit */}
+            <Route path="/reports/dashboard"          element={<DashboardPage />} />
+            <Route path="/reports/collection"         element={<CollectionReportPage />} />
+            <Route path="/reports/billing"            element={<BillingReportPage />} />
+            <Route path="/reports/audit-trail"        element={<AuditTrailPage />} />
+
+            {/* 10. Master Data Catalogs */}
+            <Route path="/masters/patients"           element={<PatientDirectoryPage />} />
+            <Route path="/masters/doctors"            element={<DoctorsStaffPage />} />
+            <Route path="/masters/medicines"          element={<MedicineMasterPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
