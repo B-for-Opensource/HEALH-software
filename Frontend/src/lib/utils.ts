@@ -61,10 +61,17 @@ export function formatTime(timeStr?: string): string {
 export function getStatusBadgeClass(status?: string): string {
   const map: Record<string, string> = {
     Waiting: 'bg-amber-100 text-amber-800 border-amber-200',
+    'With-Nurse': 'bg-teal-100 text-teal-800 border-teal-200',
+    'Nurse-Station': 'bg-teal-100 text-teal-800 border-teal-200',
+    'Passed-to-Doctor': 'bg-sky-100 text-sky-800 border-sky-200',
     Called: 'bg-blue-100 text-blue-800 border-blue-200',
     'In-Consult': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    'Sent-to-Pharmacy': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    'Sent-to-Nursing': 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+    'Sent-to-Lab': 'bg-cyan-100 text-cyan-800 border-cyan-200',
     Procedure: 'bg-purple-100 text-purple-800 border-purple-200',
     'Billing-Pending': 'bg-orange-100 text-orange-800 border-orange-200',
+    'Sent-Back-to-Reception': 'bg-orange-100 text-orange-800 border-orange-200',
     Completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     Cancelled: 'bg-rose-100 text-rose-800 border-rose-200',
     'No-Show': 'bg-gray-100 text-gray-800 border-gray-200',

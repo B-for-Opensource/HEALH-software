@@ -6,6 +6,7 @@ import CommandPalette from '@/components/shared/CommandPalette';
 import BranchNetworkModal from '@/components/shared/BranchNetworkModal';
 import HealLogo from '@/components/shared/HealLogo';
 import AppSwitcher from '@/components/shared/AppSwitcher';
+import PatientPipelineTracker from '@/components/shared/PatientPipelineTracker';
 import {
   Users, Calendar, Stethoscope, Receipt, FileText,
   BarChart2, Settings, LogOut, Menu, X, ChevronRight, Sparkles,
@@ -402,6 +403,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Scrollable Main Content — Responsive for Mobile, Tablet, Laptop & TV screens */}
         <main className="flex-1 overflow-y-auto bg-[#FAF7F2] p-3 sm:p-4 md:p-6 2xl:p-8 3xl:p-10 w-full">
           <div className="max-w-7xl 2xl:max-w-[1700px] 3xl:max-w-[2200px] mx-auto w-full transition-all">
+            <PatientPipelineTracker />
             {children}
           </div>
         </main>

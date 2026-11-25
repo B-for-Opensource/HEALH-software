@@ -45,7 +45,23 @@ export interface Appointment {
   visit_type: string;
   consultation_type?: string;
   purpose?: string;
-  status: 'Waiting' | 'Called' | 'In-Consult' | 'Procedure' | 'Billing-Pending' | 'Completed' | 'Cancelled' | 'No-Show';
+  status:
+    | 'Waiting'
+    | 'With-Nurse'
+    | 'Nurse-Station'
+    | 'Passed-to-Doctor'
+    | 'Called'
+    | 'In-Consult'
+    | 'Sent-to-Pharmacy'
+    | 'Sent-to-Nursing'
+    | 'Sent-to-Lab'
+    | 'Procedure'
+    | 'Billing-Pending'
+    | 'Sent-Back-to-Reception'
+    | 'Completed'
+    | 'Cancelled'
+    | 'No-Show'
+    | string;
   token_printed: boolean;
   created_at: string;
 }

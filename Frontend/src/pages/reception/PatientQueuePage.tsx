@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   RefreshCw,
   PhoneCall,
@@ -16,7 +16,11 @@ import {
   Maximize2,
   Minimize2,
   Volume2,
-  ArrowLeft
+  ArrowLeft,
+  Pill,
+  Bandage,
+  FlaskConical,
+  Send
 } from 'lucide-react';
 import { appointmentsApi, mastersApi } from '@/api';
 import { useAuthStore } from '@/store/authStore';
@@ -25,13 +29,27 @@ import { cn, formatDateTime, getStatusBadgeClass } from '@/lib/utils';
 
 export default function PatientQueuePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get('stage') || 'all');
   const [error, setError] = useState<string | null>(null);
   const [tvMode, setTvMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString());
+
+  useEffect(() => {
+    const stage = searchParams.get('stage');
+    if (stage) setStatusFilter(stage);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handlePipelineFilter = (e: any) => {
+      if (e.detail?.stage) setStatusFilter(e.detail.stage);
+    };
+    window.addEventListener('heal:filter-pipeline-stage', handlePipelineFilter);
+    return () => window.removeEventListener('heal:filter-pipeline-stage', handlePipelineFilter);
+  }, []);
 
   useEffect(() => {
     if (!tvMode) return;
@@ -111,8 +129,13 @@ export default function PatientQueuePage() {
 
   const stats = {
     waiting: appointments.filter((a) => a.status === 'Waiting').length,
-    inConsult: appointments.filter((a) => a.status === 'In-Consult' || a.status === 'Called').length,
-    billingPending: appointments.filter((a) => a.status === 'Billing-Pending').length,
+    withNurse: appointments.filter((a) => a.status === 'With-Nurse' || a.status === 'Nurse-Station').length,
+    passedToDoctor: appointments.filter((a) => a.status === 'Passed-to-Doctor' || a.status === 'Called' || a.status === 'In-Consult').length,
+    inConsult: appointments.filter((a) => a.status === 'Passed-to-Doctor' || a.status === 'Called' || a.status === 'In-Consult').length,
+    sentToPharmacy: appointments.filter((a) => a.status === 'Sent-to-Pharmacy').length,
+    sentToNursing: appointments.filter((a) => a.status === 'Sent-to-Nursing' || a.status === 'Procedure').length,
+    sentToLab: appointments.filter((a) => a.status === 'Sent-to-Lab').length,
+    billingPending: appointments.filter((a) => a.status === 'Billing-Pending' || a.status === 'Sent-Back-to-Reception').length,
     completed: appointments.filter((a) => a.status === 'Completed').length,
   };
 
@@ -336,18 +359,29 @@ export default function PatientQueuePage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div className="flex items-center gap-2 overflow-x-auto text-sm">
           <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-          {['all', 'Waiting', 'In-Consult', 'Billing-Pending', 'Completed', 'Cancelled'].map((tab) => (
+          {[
+            { id: 'all', label: 'All Tokens' },
+            { id: 'Waiting', label: '1. Reception' },
+            { id: 'With-Nurse', label: '2. Nurse Vitals' },
+            { id: 'Passed-to-Doctor', label: '3. Ready for Doctor' },
+            { id: 'In-Consult', label: '3b. In Cabin' },
+            { id: 'Sent-to-Pharmacy', label: '4a. To Pharmacy' },
+            { id: 'Sent-to-Nursing', label: '4b. To Nursing' },
+            { id: 'Sent-to-Lab', label: '4c. To Lab' },
+            { id: 'Billing-Pending', label: '5. Back to Reception' },
+            { id: 'Completed', label: '6. Completed' },
+          ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setStatusFilter(tab)}
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
               className={cn(
-                'px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition text-xs capitalize',
-                statusFilter === tab
-                  ? 'bg-slate-900 text-white shadow-xs'
+                'px-2.5 py-1.5 rounded-lg font-medium whitespace-nowrap transition text-xs',
+                statusFilter === tab.id
+                  ? 'bg-slate-900 text-white shadow-xs font-bold'
                   : 'text-slate-600 hover:bg-slate-100'
               )}
             >
-              {tab === 'all' ? 'All Tokens' : tab}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -424,57 +458,165 @@ export default function PatientQueuePage() {
               </div>
 
               {/* Mobile Actions Toolbar */}
-              <div className="pt-1 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-1 flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-100">
                 {item.status === 'Waiting' && (
                   <>
                     <button
-                      onClick={() => handleStatusChange(item.id, 'In-Consult')}
+                      onClick={() => handleStatusChange(item.id, 'With-Nurse')}
                       disabled={updatingId === item.id}
-                      className="flex-1 py-2 bg-violet-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs"
+                      className="px-2.5 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-xs font-bold flex items-center gap-1"
+                      title="Pass to Nurse Station for BMI & Vitals Triage"
+                    >
+                      <Activity className="w-3.5 h-3.5 text-teal-600" />
+                      Pass to Nurse
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(item.id, 'Passed-to-Doctor')}
+                      disabled={updatingId === item.id}
+                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
+                      title="Pass directly to Doctor queue"
                     >
                       <Stethoscope className="w-3.5 h-3.5" />
-                      Send to Doctor
+                      Pass to Doctor
+                    </button>
+                  </>
+                )}
+                {item.status === 'With-Nurse' && (
+                  <>
+                    <button
+                      onClick={() => handleStatusChange(item.id, 'Passed-to-Doctor')}
+                      disabled={updatingId === item.id}
+                      className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
+                      title="Vitals recorded; pass to Doctor cabin queue"
+                    >
+                      <Stethoscope className="w-3.5 h-3.5" />
+                      Vitals Done ➔ Doctor
                     </button>
                     <button
                       onClick={() => navigate('/daycare/lounges')}
-                      className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1"
+                      className="px-2 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-lg text-xs font-medium flex items-center gap-1"
                     >
-                      <Activity className="w-3.5 h-3.5" />
+                      <Activity className="w-3.5 h-3.5 text-teal-600" />
                       Nurse Desk
                     </button>
                   </>
+                )}
+                {item.status === 'Passed-to-Doctor' && (
+                  <button
+                    onClick={() => {
+                      handleStatusChange(item.id, 'In-Consult');
+                      navigate(`/clinical/workbench/${item.id}`);
+                    }}
+                    disabled={updatingId === item.id}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
+                    title="Call patient into doctor cabin"
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    Call Inside Cabin
+                  </button>
                 )}
                 {item.status === 'In-Consult' && (
                   <>
                     <button
                       onClick={() => navigate(`/clinical/workbench/${item.id}`)}
-                      className="flex-1 py-2 bg-violet-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs"
+                      className="px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
                     >
                       <Stethoscope className="w-3.5 h-3.5" />
-                      Open Workbench
+                      Workbench
                     </button>
                     <button
                       onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
-                      className="px-3 py-2 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1"
+                      disabled={updatingId === item.id}
+                      className="px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1"
+                      title="Send back to reception for billing and review scheduling"
                     >
                       <Receipt className="w-3.5 h-3.5" />
-                      To Bill
+                      To Reception
+                    </button>
+                  </>
+                )}
+                {item.status === 'Sent-to-Pharmacy' && (
+                  <>
+                    <button
+                      onClick={() => navigate('/pharmacy/dispensary')}
+                      className="px-2 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1"
+                    >
+                      <Pill className="w-3.5 h-3.5 text-emerald-600" />
+                      Dispensary
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
+                      disabled={updatingId === item.id}
+                      className="px-2 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                      title="Dispense and return to Reception for billing"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      Dispensed ➔ To Reception
+                    </button>
+                  </>
+                )}
+                {item.status === 'Sent-to-Nursing' && (
+                  <>
+                    <button
+                      onClick={() => navigate('/daycare/lounges')}
+                      className="px-2 py-1.5 bg-fuchsia-50 text-fuchsia-800 border border-fuchsia-200 rounded-lg text-xs font-bold flex items-center gap-1"
+                    >
+                      <Activity className="w-3.5 h-3.5 text-fuchsia-600" />
+                      Dressing
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
+                      disabled={updatingId === item.id}
+                      className="px-2 py-1.5 bg-fuchsia-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                      title="Procedure complete, return to Reception"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      Done ➔ To Reception
+                    </button>
+                  </>
+                )}
+                {item.status === 'Sent-to-Lab' && (
+                  <>
+                    <button
+                      onClick={() => navigate('/clinical/lab')}
+                      className="px-2 py-1.5 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-lg text-xs font-bold flex items-center gap-1"
+                    >
+                      <FlaskConical className="w-3.5 h-3.5 text-cyan-600" />
+                      Lab Desk
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
+                      disabled={updatingId === item.id}
+                      className="px-2 py-1.5 bg-cyan-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1"
+                      title="Samples drawn, return to Reception"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      Drawn ➔ To Reception
                     </button>
                   </>
                 )}
                 {item.status === 'Billing-Pending' && (
-                  <button
-                    onClick={() => navigate(`/billing/pos?appointment_id=${item.id}&patient_id=${item.patient_id}`)}
-                    className="w-full py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs"
-                  >
-                    <Receipt className="w-3.5 h-3.5" />
-                    Bill Patient Now
-                  </button>
+                  <>
+                    <button
+                      onClick={() => navigate(`/billing/pos?appointment_id=${item.id}&patient_id=${item.patient_id}`)}
+                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      Bill & Settle
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(item.id, 'Completed')}
+                      disabled={updatingId === item.id}
+                      className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium"
+                    >
+                      Discharge
+                    </button>
+                  </>
                 )}
                 {item.status === 'Completed' && (
                   <button
                     onClick={() => navigate(`/clinical/workbench/${item.id}`)}
-                    className="w-full py-2 bg-slate-100 text-slate-700 hover:text-violet-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1"
+                    className="w-full py-1.5 bg-slate-100 text-slate-700 hover:text-violet-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1"
                   >
                     <Stethoscope className="w-3.5 h-3.5 text-violet-600" />
                     View Notes & Rx
@@ -547,29 +689,64 @@ export default function PatientQueuePage() {
                         {item.status === 'Waiting' && (
                           <>
                             <button
-                              onClick={() => handleStatusChange(item.id, 'In-Consult')}
+                              onClick={() => handleStatusChange(item.id, 'With-Nurse')}
                               disabled={updatingId === item.id}
-                              className="inline-flex items-center gap-1 bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1 rounded text-xs font-semibold transition"
-                              title="Send patient into Doctor Workbench"
+                              className="inline-flex items-center gap-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-2 py-1 rounded text-xs font-bold transition"
+                              title="Route to Nurse for Vitals / Dressing"
+                            >
+                              <Activity className="w-3 h-3 text-teal-600" />
+                              Pass to Nurse
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(item.id, 'Passed-to-Doctor')}
+                              disabled={updatingId === item.id}
+                              className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-xs"
+                              title="Pass directly to Doctor queue"
                             >
                               <Stethoscope className="w-3 h-3" />
-                              Send to Doctor
+                              Pass to Doctor
+                            </button>
+                          </>
+                        )}
+                        {item.status === 'With-Nurse' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(item.id, 'Passed-to-Doctor')}
+                              disabled={updatingId === item.id}
+                              className="inline-flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-xs"
+                              title="Vitals recorded; pass to Doctor cabin"
+                            >
+                              <Stethoscope className="w-3 h-3" />
+                              Vitals Done ➔ Doctor
                             </button>
                             <button
                               onClick={() => navigate('/daycare/lounges')}
-                              className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-xs font-medium transition"
-                              title="Route to Nurse for Vitals / Dressing"
+                              className="inline-flex items-center gap-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-2 py-1 rounded text-xs font-medium transition"
                             >
-                              <Activity className="w-3 h-3" />
-                              Nurse
+                              <Activity className="w-3 h-3 text-teal-600" />
+                              Nurse Desk
                             </button>
                           </>
+                        )}
+                        {item.status === 'Passed-to-Doctor' && (
+                          <button
+                            onClick={() => {
+                              handleStatusChange(item.id, 'In-Consult');
+                              navigate(`/clinical/workbench/${item.id}`);
+                            }}
+                            disabled={updatingId === item.id}
+                            className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs font-bold transition shadow-xs"
+                            title="Call into Doctor Cabin"
+                          >
+                            <Stethoscope className="w-3 h-3" />
+                            Call Inside Cabin
+                          </button>
                         )}
                         {item.status === 'In-Consult' && (
                           <>
                             <button
                               onClick={() => navigate(`/clinical/workbench/${item.id}`)}
-                              className="inline-flex items-center gap-1 bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1 rounded text-xs font-medium transition"
+                              className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-xs"
                             >
                               <Stethoscope className="w-3 h-3" />
                               Workbench
@@ -577,10 +754,71 @@ export default function PatientQueuePage() {
                             <button
                               onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
                               disabled={updatingId === item.id}
-                              className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 px-2.5 py-1 rounded text-xs font-medium transition"
+                              className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded text-xs font-semibold transition"
+                              title="Send back to reception"
                             >
                               <Receipt className="w-3 h-3" />
-                              To Billing
+                              To Reception
+                            </button>
+                          </>
+                        )}
+                        {item.status === 'Sent-to-Pharmacy' && (
+                          <>
+                            <button
+                              onClick={() => navigate('/pharmacy/dispensary')}
+                              className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-1 rounded text-xs font-bold transition"
+                            >
+                              <Pill className="w-3 h-3 text-emerald-600" />
+                              Dispensary
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
+                              disabled={updatingId === item.id}
+                              className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-semibold transition shadow-xs"
+                              title="Dispensed, send back to reception"
+                            >
+                              <Receipt className="w-3 h-3" />
+                              Dispensed ➔ To Reception
+                            </button>
+                          </>
+                        )}
+                        {item.status === 'Sent-to-Nursing' && (
+                          <>
+                            <button
+                              onClick={() => navigate('/daycare/lounges')}
+                              className="inline-flex items-center gap-1 bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-800 border border-fuchsia-200 px-2 py-1 rounded text-xs font-bold transition"
+                            >
+                              <Activity className="w-3 h-3 text-fuchsia-600" />
+                              Dressing Lounge
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
+                              disabled={updatingId === item.id}
+                              className="inline-flex items-center gap-1 bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-2.5 py-1 rounded text-xs font-semibold transition shadow-xs"
+                              title="Procedure done, return to reception"
+                            >
+                              <Receipt className="w-3 h-3" />
+                              Done ➔ To Reception
+                            </button>
+                          </>
+                        )}
+                        {item.status === 'Sent-to-Lab' && (
+                          <>
+                            <button
+                              onClick={() => navigate('/clinical/lab')}
+                              className="inline-flex items-center gap-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 px-2 py-1 rounded text-xs font-bold transition"
+                            >
+                              <FlaskConical className="w-3 h-3 text-cyan-600" />
+                              Lab Orders
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(item.id, 'Billing-Pending')}
+                              disabled={updatingId === item.id}
+                              className="inline-flex items-center gap-1 bg-cyan-600 hover:bg-cyan-700 text-white px-2.5 py-1 rounded text-xs font-semibold transition shadow-xs"
+                              title="Samples collected, return to reception"
+                            >
+                              <Receipt className="w-3 h-3" />
+                              Drawn ➔ To Reception
                             </button>
                           </>
                         )}
@@ -596,10 +834,17 @@ export default function PatientQueuePage() {
                             </button>
                             <button
                               onClick={() => navigate(`/billing/pos?appointment_id=${item.id}&patient_id=${item.patient_id}`)}
-                              className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-medium transition"
+                              className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-xs"
                             >
                               <Receipt className="w-3 h-3" />
-                              Bill Patient
+                              Bill & Settle
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(item.id, 'Completed')}
+                              disabled={updatingId === item.id}
+                              className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-medium transition"
+                            >
+                              Discharge
                             </button>
                           </>
                         )}

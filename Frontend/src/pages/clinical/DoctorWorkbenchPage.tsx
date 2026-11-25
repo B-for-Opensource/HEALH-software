@@ -30,7 +30,8 @@ import {
   Sparkles,
   Layers,
   Phone,
-  Activity
+  Activity,
+  Receipt
 } from 'lucide-react';
 import {
   appointmentsApi,
@@ -585,7 +586,10 @@ export default function DoctorWorkbenchPage() {
   const heightM = parseFloat(vitals.height_cm) / 100;
   const bmi = weight > 0 && heightM > 0 ? (weight / (heightM * heightM)).toFixed(1) : '-';
 
-  const handleSaveConsultation = async (finalize = false) => {
+  const handleSaveConsultation = async (
+    finalize = false,
+    routeTo: 'Billing-Pending' | 'Sent-to-Pharmacy' | 'Sent-to-Nursing' | 'Sent-to-Lab' = 'Billing-Pending'
+  ) => {
     if (!selectedAppt || !patient) return;
     setSaving(true);
     try {
@@ -684,8 +688,16 @@ export default function DoctorWorkbenchPage() {
       }
 
       if (finalize) {
-        await appointmentsApi.updateStatus(selectedAppt.id, 'Billing-Pending');
-        alert('Consultation finalized! Patient has been moved to Billing Pending.');
+        await appointmentsApi.updateStatus(selectedAppt.id, routeTo);
+        const destLabel =
+          routeTo === 'Sent-to-Pharmacy'
+            ? 'Pharmacy for Dispensing'
+            : routeTo === 'Sent-to-Nursing'
+            ? 'Nurse Station for Daycare / Dressing / TT'
+            : routeTo === 'Sent-to-Lab'
+            ? 'Diagnostic Laboratory'
+            : 'Receptionist / Cashier for Billing & 3-Day Review';
+        alert(`Consultation finalized! Patient has been passed to ${destLabel}.`);
         navigate('/reception/queue');
       } else {
         alert('Consultation draft saved successfully.');
@@ -895,12 +907,43 @@ export default function DoctorWorkbenchPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSaveConsultation(true)}
+                  onClick={() => handleSaveConsultation(true, 'Billing-Pending')}
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-xs transition"
+                  className="inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-xs transition"
+                  title="Finalize and return patient to Receptionist / Cashier for billing settlement & review date booking"
                 >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Finalize & Send to Billing
+                  <Receipt className="w-3.5 h-3.5" />
+                  Back to Reception
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveConsultation(true, 'Sent-to-Pharmacy')}
+                  disabled={saving}
+                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-xs transition"
+                  title="Finalize and route prescription directly to Pharmacy for dispensing"
+                >
+                  <Pill className="w-3.5 h-3.5" />
+                  To Pharmacy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveConsultation(true, 'Sent-to-Nursing')}
+                  disabled={saving}
+                  className="inline-flex items-center gap-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-xs transition"
+                  title="Route patient to Nurse Station for Dressing / TT / Daycare Bed"
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  To Nursing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveConsultation(true, 'Sent-to-Lab')}
+                  disabled={saving}
+                  className="inline-flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-xs transition"
+                  title="Route patient to Laboratory for diagnostics"
+                >
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  To Lab
                 </button>
               </div>
             </div>
