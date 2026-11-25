@@ -41,9 +41,18 @@ def search_patients(
             "first_name": p.first_name,
             "last_name": p.last_name,
             "phone": p.phone,
+            "alt_phone": p.alt_phone,
+            "email": p.email,
+            "date_of_birth": p.date_of_birth.isoformat() if p.date_of_birth else None,
             "gender": p.gender,
             "age_years": p.age_years,
+            "blood_group": p.blood_group,
+            "relative_name": p.relative_name,
+            "relation_type": p.relation_type,
+            "address": p.address,
             "city": p.city,
+            "district": p.district,
+            "pincode": p.pincode,
             "consultation_type": p.consultation_type,
             "known_allergies": p.known_allergies,
             "balance_advance": p.balance_advance
@@ -237,11 +246,37 @@ def update_patient(
     if req.first_name is not None: p.first_name = req.first_name
     if req.last_name is not None: p.last_name = req.last_name
     if req.phone is not None: p.phone = req.phone
+    if req.alt_phone is not None: p.alt_phone = req.alt_phone
     if req.email is not None: p.email = req.email
-    if req.city is not None: p.city = req.city
+    if req.date_of_birth is not None:
+        try:
+            p.date_of_birth = datetime.strptime(req.date_of_birth, "%Y-%m-%d").date() if req.date_of_birth else None
+        except Exception:
+            pass
+    if req.age_years is not None: p.age_years = req.age_years
+    if req.gender is not None: p.gender = req.gender
+    if req.blood_group is not None: p.blood_group = req.blood_group
+    if req.relative_name is not None: p.relative_name = req.relative_name
+    if req.relation_type is not None: p.relation_type = req.relation_type
     if req.address is not None: p.address = req.address
+    if req.city is not None: p.city = req.city
+    if req.district is not None: p.district = req.district
+    if req.pincode is not None: p.pincode = req.pincode
+    if req.consultation_type is not None: p.consultation_type = req.consultation_type
     if req.known_allergies is not None: p.known_allergies = req.known_allergies
     if req.is_active is not None: p.is_active = req.is_active
 
+    p.updated_at = datetime.utcnow()
     db.commit()
-    return schemas.ApiResponse(success=True, message="Patient details updated successfully")
+    db.refresh(p)
+    return schemas.ApiResponse(
+        success=True, 
+        message="Patient profile updated successfully in master records",
+        data={
+            "id": p.id,
+            "op_no": p.op_no,
+            "first_name": p.first_name,
+            "last_name": p.last_name,
+            "phone": p.phone
+        }
+    )

@@ -1,23 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Bed, 
-  Activity, 
-  CheckCircle2, 
-  Clock, 
-  FileText, 
-  ShieldAlert, 
+import {
+  Bed,
+  Activity,
+  CheckCircle2,
+  Clock,
+  FileText,
+  ShieldAlert,
   Sparkles,
   RefreshCw,
   LogOut,
-  X
+  X,
+  Search,
+  UserCheck
 } from 'lucide-react';
-import { daycareApi } from '@/api';
+import { daycareApi, patientsApi } from '@/api';
 
 export default function DaycareLoungePage() {
   const [beds, setBeds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBed, setSelectedBed] = useState<any | null>(null);
   const [showAllocateModal, setShowAllocateModal] = useState(false);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientResults, setPatientResults] = useState<any[]>([]);
   const [allocateForm, setAllocateForm] = useState({
     patient_name: '',
     op_no: '',
@@ -54,11 +58,38 @@ export default function DaycareLoungePage() {
     loadBeds();
   };
 
+  const handlePatientSearch = async (val: string) => {
+    setPatientSearch(val);
+    if (val.trim().length >= 2) {
+      try {
+        const res = await patientsApi.search(val.trim());
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        setPatientResults(list);
+      } catch {
+        setPatientResults([]);
+      }
+    } else {
+      setPatientResults([]);
+    }
+  };
+
+  const handleSelectPatient = (p: any) => {
+    setAllocateForm((f) => ({
+      ...f,
+      patient_name: `${p.first_name} ${p.last_name || ''}`.trim(),
+      op_no: p.op_no || '',
+    }));
+    setPatientSearch(`${p.op_no} — ${p.first_name}`);
+    setPatientResults([]);
+  };
+
   const handleAllocateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBed) return;
     await daycareApi.allocateBed(selectedBed.id, allocateForm);
     setShowAllocateModal(false);
+    setPatientSearch('');
+    setPatientResults([]);
     loadBeds();
   };
 
@@ -102,25 +133,23 @@ export default function DaycareLoungePage() {
         {beds.map((bed) => (
           <div
             key={bed.id}
-            className={`border rounded-2xl p-5 shadow-xs flex flex-col justify-between transition ${
-              bed.status === 'Occupied'
+            className={`border rounded-2xl p-5 shadow-xs flex flex-col justify-between transition ${bed.status === 'Occupied'
                 ? 'bg-purple-50/40 border-purple-200'
                 : bed.status === 'Cleaning'
-                ? 'bg-amber-50/40 border-amber-200'
-                : 'bg-white border-slate-200 hover:border-slate-300'
-            }`}
+                  ? 'bg-amber-50/40 border-amber-200'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+              }`}
           >
             <div>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
-                      bed.status === 'Occupied'
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${bed.status === 'Occupied'
                         ? 'bg-purple-200 text-purple-900'
                         : bed.status === 'Cleaning'
-                        ? 'bg-amber-200 text-amber-900'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}
+                          ? 'bg-amber-200 text-amber-900'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}
                   >
                     <Bed className="w-5 h-5" />
                   </div>
@@ -222,6 +251,40 @@ export default function DaycareLoungePage() {
             </div>
 
             <form onSubmit={handleAllocateSubmit} className="space-y-3">
+              {/* Quick Patient Search (Bypass Registration) */}
+              <div className="bg-violet-50/60 p-2.5 rounded-xl border border-violet-100 space-y-1.5">
+                <label className="block font-bold text-violet-900 text-[11px] flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5 text-violet-600" />
+                  Quick Patient Lookup (Search OP / Mobile / Name)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Type OP # (e.g. KRN-00101) or Name to auto-fill..."
+                    value={patientSearch}
+                    onChange={(e) => handlePatientSearch(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg p-1.5 text-xs bg-white focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                  {patientResults.length > 0 && (
+                    <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto divide-y divide-slate-100">
+                      {patientResults.map((p) => (
+                        <div
+                          key={p.id}
+                          onClick={() => handleSelectPatient(p)}
+                          className="p-2 hover:bg-violet-50 cursor-pointer flex items-center justify-between text-xs"
+                        >
+                          <div>
+                            <span className="font-mono font-bold text-violet-700 mr-2">{p.op_no}</span>
+                            <span className="font-semibold text-slate-900">{p.first_name} {p.last_name || ''}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400">{p.phone}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Patient Name *</label>
                 <input

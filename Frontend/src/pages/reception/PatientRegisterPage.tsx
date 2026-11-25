@@ -1,21 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  UserPlus, 
   Search, 
-  CheckCircle2, 
+  UserCheck, 
+  UserPlus, 
+  Ticket, 
+  Printer, 
+  ArrowRight, 
   AlertTriangle, 
-  ArrowRight,
-  Ticket,
-  Printer
+  CheckCircle2, 
+  ShieldCheck, 
+  Stethoscope, 
+  RotateCcw,
+  Sparkles,
+  User,
+  Phone,
+  Calendar,
+  Lock,
+  ChevronRight
 } from 'lucide-react';
 import { patientsApi, appointmentsApi, mastersApi } from '@/api';
-import type { Staff, Department } from '@/types';
+import type { Staff, Department, Patient } from '@/types';
 
 export default function PatientRegisterPage() {
   const navigate = useNavigate();
 
-  // Registration Form State
+  // Search State (Step 1: Search Patient ID / Mobile / Name)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Patient[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Selected Patient (Existing vs New)
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  // Registration / Visit Form State (Step 2 & 3)
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -29,122 +49,130 @@ export default function PatientRegisterPage() {
     relative_name: '',
     relation_type: 'S/o',
     address: '',
-    city: '',
-    district: '',
+    city: 'Kozhikode',
+    district: 'Kozhikode',
     pincode: '',
-    consultation_type: 'General',
+    consultation_type: 'Aesthetic',
     known_allergies: '',
   });
 
-  // Duplicate warning
+  // Duplicate warning for new registration
   const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
-  const [existingPatient, setExistingPatient] = useState<any | null>(null);
 
-  // Doctors & Departments
+  // Doctors & Departments (Step 4: Select Doctor)
   const [doctors, setDoctors] = useState<Staff[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-
-  // Token Form State (post-save)
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [selectedDoctor, setSelectedDoctor] = useState<Staff | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState('');
+
+  // Visit Specific Attributes (Strictly isolated from Doctor master profile)
   const [visitType, setVisitType] = useState('Walk-in');
   const [purpose, setPurpose] = useState('');
+  const [roomNo, setRoomNo] = useState('Room 101');
+  const [priority, setPriority] = useState('Normal');
 
-  // Result state
-  const [savedPatient, setSavedPatient] = useState<any | null>(null);
-  const [issuedToken, setIssuedToken] = useState<any | null>(null);
+  // Submission & Result States
   const [loading, setLoading] = useState(false);
-  const [tokenLoading, setTokenLoading] = useState(false);
+  const [issuedToken, setIssuedToken] = useState<any | null>(null);
 
+  // Load Doctors and Departments
   useEffect(() => {
-    // Load doctors and departments
     mastersApi.doctors().then((res) => {
-      const list = Array.isArray(res) ? res : (res?.data || []);
+      const list: Staff[] = Array.isArray(res) ? res : (res?.data || []);
       setDoctors(list);
-      if (list.length > 0) setSelectedDoctorId(list[0].id);
+      if (list.length > 0) {
+        setSelectedDoctorId(list[0].id);
+        setSelectedDoctor(list[0]);
+        if (list[0].department_id) setSelectedDeptId(list[0].department_id);
+      }
     }).catch(() => {});
 
     mastersApi.departments().then((res) => {
-      const list = Array.isArray(res) ? res : (res?.data || []);
+      const list: Department[] = Array.isArray(res) ? res : (res?.data || []);
       setDepartments(list);
-      if (list.length > 0) setSelectedDeptId(list[0].id);
     }).catch(() => {});
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handlePhoneBlur = async () => {
-    const phone = formData.phone.trim();
-    if (phone.length >= 10) {
-      try {
-        const res = await patientsApi.search(phone);
-        const list = Array.isArray(res) ? res : (res?.data || []);
-        if (list.length > 0) {
-          const p = list[0];
-          setPhoneWarning(`⚠️ Phone already registered for OP #${p.op_no}: ${p.first_name} ${p.last_name || ''}`);
-          setExistingPatient(p);
-        } else {
-          setPhoneWarning(null);
-          setExistingPatient(null);
-        }
-      } catch {
-        // ignore
+  // Sync selected doctor object when doctor ID changes
+  useEffect(() => {
+    if (selectedDoctorId) {
+      const doc = doctors.find((d) => d.id === selectedDoctorId) || null;
+      setSelectedDoctor(doc);
+      if (doc?.department_id) {
+        setSelectedDeptId(doc.department_id);
       }
     }
-  };
+  }, [selectedDoctorId, doctors]);
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.first_name || !formData.phone) {
-      alert('First Name and Phone are required');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await patientsApi.create(formData);
-      const patient = res?.data || res;
-      setSavedPatient(patient);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || 'Patient registration failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleIssueToken = async () => {
-    if (!savedPatient?.id) return;
-    setTokenLoading(true);
-    try {
-      const payload = {
-        patient_id: savedPatient.id,
-        doctor_id: selectedDoctorId,
-        department_id: selectedDeptId,
-        visit_type: visitType,
-        consultation_type: formData.consultation_type,
-        purpose: purpose,
-      };
-      const res = await appointmentsApi.create(payload);
-      const token = res?.data || res;
-      setIssuedToken(token);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to issue token');
-    } finally {
-      setTokenLoading(false);
+  // Handle Search Input (Patient ID / Mobile / Name)
+  const handleSearchChange = async (val: string) => {
+    setSearchQuery(val);
+    if (val.trim().length >= 2) {
+      setIsSearching(true);
+      setShowDropdown(true);
+      try {
+        const res = await patientsApi.search(val.trim());
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        setSearchResults(list);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    } else {
+      setSearchResults([]);
+      setShowDropdown(false);
     }
   };
 
-  const printTokenSlip = () => {
-    window.print();
-  };
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  const resetForm = () => {
-    setSavedPatient(null);
-    setIssuedToken(null);
+  // Select Existing Patient: Retrieve profile & auto-populate
+  const handleSelectExistingPatient = (p: Patient) => {
+    setSelectedPatient(p);
+    setShowDropdown(false);
+    setSearchQuery(`${p.op_no} — ${p.first_name} ${p.last_name || ''}`.trim());
     setPhoneWarning(null);
-    setExistingPatient(null);
+
+    // Auto-populate all patient profile fields
+    setFormData({
+      first_name: p.first_name || '',
+      last_name: p.last_name || '',
+      phone: p.phone || '',
+      alt_phone: (p as any).alt_phone || '',
+      email: p.email || '',
+      date_of_birth: (p as any).date_of_birth ? String((p as any).date_of_birth).split('T')[0] : '',
+      age_years: p.age_years ? String(p.age_years) : '',
+      gender: p.gender || 'Female',
+      blood_group: (p as any).blood_group || '',
+      relative_name: (p as any).relative_name || '',
+      relation_type: (p as any).relation_type || 'S/o',
+      address: p.address || '',
+      city: p.city || 'Kozhikode',
+      district: (p as any).district || 'Kozhikode',
+      pincode: (p as any).pincode || '',
+      consultation_type: p.consultation_type || 'Aesthetic',
+      known_allergies: p.known_allergies || '',
+    });
+  };
+
+  // Reset to New Patient Mode
+  const handleStartNewPatient = () => {
+    setSelectedPatient(null);
+    setSearchQuery('');
+    setShowDropdown(false);
+    setPhoneWarning(null);
+    setIssuedToken(null);
     setFormData({
       first_name: '',
       last_name: '',
@@ -158,144 +186,678 @@ export default function PatientRegisterPage() {
       relative_name: '',
       relation_type: 'S/o',
       address: '',
-      city: '',
-      district: '',
+      city: 'Kozhikode',
+      district: 'Kozhikode',
       pincode: '',
-      consultation_type: 'General',
+      consultation_type: 'Aesthetic',
       known_allergies: '',
     });
+    setPurpose('');
+  };
+
+  // Form input change
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Check duplicate phone on blur for new patient
+  const handlePhoneBlur = async () => {
+    if (selectedPatient) return; // already existing
+    const phone = formData.phone.trim();
+    if (phone.length >= 10) {
+      try {
+        const res = await patientsApi.search(phone);
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        if (list.length > 0) {
+          const match = list[0];
+          setPhoneWarning(`⚠️ Mobile already registered for OP #${match.op_no}: ${match.first_name} ${match.last_name || ''}`);
+        } else {
+          setPhoneWarning(null);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  // Step 5: Review / Edit / Confirm (Create Visit Registration)
+  // RULE 1: If Existing Patient, updating patient details in registration form UPDATES the Patient Master Record
+  // RULE 2: Doctor selections/updates in OP registration DO NOT update Doctor Master Profile
+  const handleReviewConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.first_name.trim() || !formData.phone.trim()) {
+      alert('First Name and Mobile Phone are required.');
+      return;
+    }
+
+    if (!selectedDoctorId) {
+      alert('Please assign a consulting doctor.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let patientId = selectedPatient?.id;
+      let opNo = selectedPatient?.op_no;
+      let patientName = `${formData.first_name} ${formData.last_name || ''}`.trim();
+
+      if (selectedPatient) {
+        // RULE 1: Registration form edit in patient profile WILL update patient details in patient profile
+        await patientsApi.update(selectedPatient.id, {
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          alt_phone: formData.alt_phone,
+          email: formData.email,
+          date_of_birth: formData.date_of_birth || null,
+          age_years: formData.age_years ? parseInt(formData.age_years) : null,
+          gender: formData.gender,
+          blood_group: formData.blood_group,
+          relative_name: formData.relative_name,
+          relation_type: formData.relation_type,
+          address: formData.address,
+          city: formData.city,
+          district: formData.district,
+          pincode: formData.pincode,
+          consultation_type: formData.consultation_type,
+          known_allergies: formData.known_allergies,
+        });
+      } else {
+        // Create brand new patient master record
+        const res = await patientsApi.create(formData);
+        const created = res?.data || res;
+        patientId = created.id;
+        opNo = created.op_no;
+        patientName = `${created.first_name} ${created.last_name || ''}`.trim();
+      }
+
+      // Create Visit Registration / Consultation Token in queue
+      // RULE 2: Doctor master profile is strictly isolated; visit metadata saved on appointment record only
+      const visitPayload = {
+        patient_id: patientId,
+        doctor_id: selectedDoctorId,
+        department_id: selectedDeptId || selectedDoctor?.department_id,
+        visit_type: visitType,
+        consultation_type: formData.consultation_type,
+        purpose: purpose || `${formData.consultation_type} Consultation`,
+        room_no: roomNo,
+        priority: priority,
+      };
+
+      const apptRes = await appointmentsApi.create(visitPayload);
+      const token = apptRes?.data || apptRes;
+
+      // Set issued token result with enriched preview
+      setIssuedToken({
+        ...token,
+        token_no: token.token_no || token.token_number || 1,
+        op_no: opNo || 'KRN-00101',
+        patient_name: patientName,
+        phone: formData.phone,
+        doctor_name: selectedDoctor?.full_name?.startsWith('Dr.')
+          ? selectedDoctor?.full_name 
+          : `Dr. ${selectedDoctor?.full_name || 'Consulting Doctor'}`,
+        department_name: departments.find((d) => d.id === selectedDeptId)?.name || selectedDoctor?.department_name || 'Aesthetic Dermatology',
+        visit_type: visitType,
+        consultation_type: formData.consultation_type,
+        purpose: purpose || 'Consultation & Clinical Evaluation',
+        room_no: roomNo,
+        timestamp: new Date().toLocaleString('en-IN', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }),
+      });
+    } catch (err: any) {
+      alert(err?.response?.data?.message || err?.message || 'Failed to complete visit registration');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const printTokenSlip = () => {
+    window.print();
   };
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Title */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">New Patient Registration</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Register walk-in or appointment patients, issue OP number, and assign consultation token
-        </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Outpatient (OP) Visit Registration
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Search existing patient or create new file, review/edit profile, assign doctor & issue consultation token
+          </p>
+        </div>
+
+        {selectedPatient ? (
+          <button
+            onClick={handleStartNewPatient}
+            className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-2xs transition"
+          >
+            <UserPlus className="w-4 h-4 text-violet-600" />
+            + Switch to New Patient
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200">
+            <Sparkles className="w-3.5 h-3.5" />
+            New Patient Mode
+          </span>
+        )}
       </div>
 
-      {/* Duplicate Alert */}
+      {/* STEP 1: SEARCH PATIENT BAR (Patient ID / Mobile / Name) */}
+      <div className="bg-white border-2 border-violet-200 rounded-2xl p-5 shadow-sm space-y-3" ref={searchRef}>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold uppercase tracking-wider text-violet-800 flex items-center gap-2">
+            <Search className="w-4 h-4" />
+            Step 1: Search Existing Patient (Patient ID / Mobile / Name)
+          </label>
+          <span className="text-[11px] text-slate-400">Search first to avoid duplicate registration</span>
+        </div>
+
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+          <input
+            type="text"
+            placeholder="Type OP Number (e.g. KRN-00101), 10-digit Mobile, or Patient Name..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
+            className="w-full pl-10 pr-24 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none shadow-inner"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(''); setSearchResults([]); setShowDropdown(false); }}
+              className="absolute right-3 top-2.5 text-xs font-semibold text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded"
+            >
+              Clear
+            </button>
+          )}
+
+          {/* Auto-suggest dropdown */}
+          {showDropdown && (
+            <div className="absolute z-30 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-72 overflow-y-auto divide-y divide-slate-100">
+              {isSearching ? (
+                <div className="p-4 text-center text-xs text-slate-500">Searching central patient database...</div>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => handleSelectExistingPatient(p)}
+                    className="p-3.5 hover:bg-violet-50 cursor-pointer flex items-center justify-between transition group"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-violet-700 bg-violet-100 px-2 py-0.5 rounded">
+                          {p.op_no}
+                        </span>
+                        <span className="font-bold text-sm text-slate-900 group-hover:text-violet-900">
+                          {p.first_name} {p.last_name || ''}
+                        </span>
+                        <span className="text-xs text-slate-400">({p.gender}, {p.age_years || 'Age N/A'})</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-slate-500">
+                        <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {p.phone}</span>
+                        <span>•</span>
+                        <span>{p.city || 'Kozhikode'}</span>
+                        {p.known_allergies && (
+                          <>
+                            <span>•</span>
+                            <span className="text-amber-600 font-medium">Allergy: {p.known_allergies}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-xs font-bold bg-violet-600 group-hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg shadow-2xs"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      Select & Populate
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center space-y-2">
+                  <p className="text-xs text-slate-500">No matching patient found for "{searchQuery}".</p>
+                  <button
+                    type="button"
+                    onClick={handleStartNewPatient}
+                    className="text-xs font-semibold text-violet-700 hover:text-violet-900 underline"
+                  >
+                    + Register as a New Patient
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Duplicate Phone Notice for New Patient */}
       {phoneWarning && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 p-4 rounded-xl flex items-start justify-between text-sm shadow-xs">
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">{phoneWarning}</p>
-              <p className="text-xs text-amber-700 mt-1">
-                You can issue a token directly for the existing patient instead of creating a duplicate file.
+              <p className="text-xs text-amber-700 mt-0.5">
+                To prevent duplicate records, use the existing profile or confirm if this is a family member sharing the same phone.
               </p>
             </div>
           </div>
-          {existingPatient && (
-            <button
-              onClick={() => {
-                setSavedPatient(existingPatient);
-                setPhoneWarning(null);
-              }}
-              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-xs"
-            >
-              Use Existing Patient
-            </button>
-          )}
         </div>
       )}
 
-      {/* SUCCESS TOKEN CARD */}
+      {/* SUCCESS TOKEN SLIP POPUP CARD (Step 6: OP Number + Token + Queue) */}
       {issuedToken ? (
-        <div className="bg-white border border-emerald-200 rounded-2xl p-8 max-w-md mx-auto text-center shadow-lg space-y-5">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+        <div className="bg-white border-2 border-emerald-300 rounded-3xl p-8 max-w-lg mx-auto text-center shadow-2xl space-y-6">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
             <CheckCircle2 className="w-10 h-10" />
           </div>
+
           <div>
-            <h2 className="text-2xl font-black text-slate-900">TOKEN ISSUED</h2>
-            <p className="text-xs uppercase tracking-wider text-slate-400 mt-1">HEAL Aesthetic & Medical Clinic</p>
+            <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+              Consultation Token Issued
+            </span>
+            <h2 className="text-2xl font-black text-slate-900 mt-2">HEAL Aesthetic & Outpatient Clinic</h2>
+            <p className="text-xs text-slate-400">Karanthoor Main Road · Calicut Outpatient Network</p>
           </div>
 
-          <div className="py-4 border-y border-dashed border-slate-300">
-            <span className="text-xs font-bold text-slate-400 uppercase">Token Number</span>
+          {/* Big Token Display */}
+          <div className="py-5 bg-gradient-to-b from-violet-50 to-white rounded-2xl border border-violet-100 shadow-inner">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Consultation Token No.</span>
             <p className="text-6xl font-black text-violet-700 my-1">#{issuedToken.token_no}</p>
-            <p className="font-mono text-sm font-semibold text-slate-600">OP: {savedPatient?.op_no}</p>
-          </div>
-
-          <div className="text-left text-xs space-y-1.5 bg-slate-50 p-4 rounded-xl text-slate-700">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Patient:</span>
-              <span className="font-semibold">{savedPatient?.first_name} {savedPatient?.last_name || ''}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Phone:</span>
-              <span>{savedPatient?.phone}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Doctor:</span>
-              <span className="font-semibold">{issuedToken?.doctor_name || 'Assigned Doctor'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Department:</span>
-              <span>{issuedToken?.department_name || 'Outpatient'}</span>
+            <div className="flex items-center justify-center gap-2 mt-1">
+              <span className="font-mono text-sm font-bold text-slate-700 bg-white px-2.5 py-0.5 rounded border border-slate-200">
+                OP No: {issuedToken.op_no}
+              </span>
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Status: Waiting in Queue
+              </span>
             </div>
           </div>
 
+          {/* Ticket Information Details */}
+          <div className="text-left text-xs space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700">
+            <div className="flex justify-between py-0.5 border-b border-slate-100">
+              <span className="text-slate-400 font-medium">Patient Name:</span>
+              <span className="font-bold text-slate-900">{issuedToken.patient_name}</span>
+            </div>
+            <div className="flex justify-between py-0.5 border-b border-slate-100">
+              <span className="text-slate-400 font-medium">Contact Phone:</span>
+              <span className="font-mono">{issuedToken.phone}</span>
+            </div>
+            <div className="flex justify-between py-0.5 border-b border-slate-100">
+              <span className="text-slate-400 font-medium">Consulting Doctor:</span>
+              <span className="font-bold text-violet-800">{issuedToken.doctor_name}</span>
+            </div>
+            <div className="flex justify-between py-0.5 border-b border-slate-100">
+              <span className="text-slate-400 font-medium">Department & Room:</span>
+              <span className="font-medium">{issuedToken.department_name} ({issuedToken.room_no || 'Room 101'})</span>
+            </div>
+            <div className="flex justify-between py-0.5 border-b border-slate-100">
+              <span className="text-slate-400 font-medium">Visit Category:</span>
+              <span className="font-medium">{issuedToken.consultation_type} • {issuedToken.visit_type}</span>
+            </div>
+            <div className="flex justify-between py-0.5">
+              <span className="text-slate-400 font-medium">Purpose Note:</span>
+              <span className="font-semibold text-slate-800">{issuedToken.purpose}</span>
+            </div>
+            <div className="flex justify-between pt-1 text-[11px] text-slate-400">
+              <span>Date & Time:</span>
+              <span>{issuedToken.timestamp}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
           <div className="flex gap-3">
             <button
               onClick={printTokenSlip}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-sm font-semibold shadow-xs"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-semibold shadow-xs"
             >
               <Printer className="w-4 h-4" />
               Print Slip
             </button>
             <button
               onClick={() => navigate('/reception/queue')}
-              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-xs"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-xs"
             >
-              Go to Queue
+              Go to Live Queue
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
           <button
-            onClick={resetForm}
-            className="text-xs text-slate-500 hover:text-slate-800 underline font-medium"
+            onClick={handleStartNewPatient}
+            className="text-xs font-semibold text-violet-700 hover:text-violet-900 underline block mx-auto"
           >
-            + Register Another Patient
+            + Register / Check-in Another Patient
           </button>
         </div>
-      ) : savedPatient ? (
-        /* PATIENT SAVED — ISSUE TOKEN STEP */
-        <div className="bg-white border border-violet-200 rounded-2xl p-6 shadow-sm space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+      ) : (
+        /* STEP 2, 3, 4, 5: REGISTRATION / VISIT FORM */
+        <form onSubmit={handleReviewConfirm} className="space-y-6">
+          {/* Status Banner */}
+          <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+            selectedPatient 
+              ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' 
+              : 'bg-violet-50/80 border-violet-200 text-violet-950'
+          }`}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-                ✓
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
+                selectedPatient ? 'bg-emerald-600 text-white' : 'bg-violet-600 text-white'
+              }`}>
+                {selectedPatient ? <UserCheck className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  {savedPatient.first_name} {savedPatient.last_name || ''}
-                </h2>
-                <p className="text-xs text-slate-500 font-mono">
-                  OP Number: <span className="text-violet-700 font-bold text-sm">{savedPatient.op_no}</span> · Phone: {savedPatient.phone}
+                <p className="font-bold text-sm">
+                  {selectedPatient 
+                    ? `Existing Patient Profile: OP #${selectedPatient.op_no} — ${selectedPatient.first_name} ${selectedPatient.last_name || ''}` 
+                    : 'New Patient Registration Form'}
+                </p>
+                <p className="text-xs opacity-80">
+                  {selectedPatient 
+                    ? 'Rule 1 Enforced: Edits to patient fields below will immediately update the Patient Master Record upon confirmation.' 
+                    : 'Fill details below to generate a new permanent OP file and assign consultation token.'}
                 </p>
               </div>
             </div>
-            <span className="text-xs bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-1 rounded-full border border-emerald-200">
-              Patient Registered
-            </span>
+
+            {selectedPatient && (
+              <span className="text-xs font-bold bg-white text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-300 shadow-2xs">
+                Auto-Populated from DB
+              </span>
+            )}
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
-              <Ticket className="w-4 h-4 text-violet-600" />
-              Assign Doctor & Issue Consultation Token
-            </h3>
+          {/* PATIENT REGISTRATION / VISIT FORM CONTAINER */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+            {/* Section 1: Demographics */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-violet-700 mb-3 flex items-center gap-2">
+                <User className="w-4 h-4" />
+                1. Patient Personal & Contact Profile
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    name="first_name"
+                    required
+                    placeholder="Given name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Last / Family Name</label>
+                  <input
+                    type="text"
+                    name="last_name"
+                    placeholder="Surname"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Mobile Phone *</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    required
+                    placeholder="10-digit primary mobile"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    onBlur={handlePhoneBlur}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Alternate Phone</label>
+                  <input
+                    type="tel"
+                    name="alt_phone"
+                    placeholder="Optional secondary phone"
+                    value={formData.alt_phone}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="patient@example.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Gender *</label>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  >
+                    <option value="Female">Female</option>
+                    <option value="Male">Male</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    name="date_of_birth"
+                    value={formData.date_of_birth}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Age (Years)</label>
+                  <input
+                    type="number"
+                    name="age_years"
+                    placeholder="e.g. 28"
+                    min="0"
+                    max="120"
+                    value={formData.age_years}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Blood Group</label>
+                  <select
+                    name="blood_group"
+                    value={formData.blood_group}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  >
+                    <option value="">Unknown / Not Tested</option>
+                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Guardian & Address */}
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-violet-700 mb-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                2. Guardian & Address Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex gap-2">
+                  <div className="w-24 shrink-0">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Relation</label>
+                    <select
+                      name="relation_type"
+                      value={formData.relation_type}
+                      onChange={handleChange}
+                      className="w-full bg-white border border-slate-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                    >
+                      <option value="S/o">S/o</option>
+                      <option value="D/o">D/o</option>
+                      <option value="W/o">W/o</option>
+                      <option value="H/o">H/o</option>
+                      <option value="Guardian">Guardian</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Guardian / Relative Name</label>
+                    <input
+                      type="text"
+                      name="relative_name"
+                      placeholder="Father / Spouse name"
+                      value={formData.relative_name}
+                      onChange={handleChange}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">City / Town</label>
+                  <input
+                    type="text"
+                    name="city"
+                    placeholder="e.g. Calicut"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">District / State</label>
+                  <input
+                    type="text"
+                    name="district"
+                    placeholder="e.g. Kozhikode, Kerala"
+                    value={formData.district}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Residential Street Address</label>
+                  <input
+                    type="text"
+                    name="address"
+                    placeholder="House name, street, locality"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">PIN Code</label>
+                  <input
+                    type="text"
+                    name="pincode"
+                    placeholder="6-digit PIN"
+                    maxLength={6}
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Clinical Allergies & Categories */}
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-violet-700 mb-3 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" />
+                3. Clinical Category & Known Allergies
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Consultation Category</label>
+                  <select
+                    name="consultation_type"
+                    value={formData.consultation_type}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  >
+                    <option value="Aesthetic">Aesthetic & Dermatology</option>
+                    <option value="General">General Medicine & Health</option>
+                    <option value="Laser">Laser & Cosmetology</option>
+                    <option value="Trichology">Hair Restoration & Trichology</option>
+                    <option value="Weight Loss">Wellness & Nutrition</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Known Drug / Cosmetic Allergies
+                  </label>
+                  <input
+                    type="text"
+                    name="known_allergies"
+                    placeholder="e.g. Penicillin, Retinoids, Sulfa, None"
+                    value={formData.known_allergies}
+                    onChange={handleChange}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* STEP 4: SELECT DOCTOR & VISIT SPECIFICS (Doctor Master Data Auto-Populated) */}
+          <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-violet-600" />
+                  Step 4: Select Doctor & Assign Visit Metadata
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Doctor master data is auto-populated. Visit-specific fee and category apply only to this token.
+                </p>
+              </div>
+
+              {/* RULE 2 CALLOUT BADGE */}
+              <div className="inline-flex items-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-2xs">
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                <span>Doctor Master Isolated (Profile Untouched)</span>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Doctor *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Doctor *</label>
                 <select
                   value={selectedDoctorId}
                   onChange={(e) => setSelectedDoctorId(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-violet-500 focus:outline-none"
                 >
                   <option value="">Select Doctor</option>
                   {doctors.map((d) => (
@@ -307,11 +869,11 @@ export default function PatientRegisterPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Department</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Department (Auto-Populated)</label>
                 <select
                   value={selectedDeptId}
                   onChange={(e) => setSelectedDeptId(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none font-medium"
                 >
                   <option value="">Select Department</option>
                   {departments.map((dep) => (
@@ -323,24 +885,51 @@ export default function PatientRegisterPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Visit Type</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Visit Type</label>
                 <select
                   value={visitType}
                   onChange={(e) => setVisitType(e.target.value)}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
                 >
-                  <option value="Walk-in">Walk-in</option>
+                  <option value="Walk-in">Walk-in Consultation</option>
+                  <option value="Review">Follow-up Review</option>
                   <option value="Appointment">Pre-booked Appointment</option>
-                  <option value="Follow-up">Follow-up Review</option>
-                  <option value="Procedure">Daycare Procedure</option>
+                  <option value="Procedure">Daycare Minor Procedure</option>
                 </select>
               </div>
 
-              <div className="md:col-span-3">
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Chief Purpose / Symptom Note</label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Room</label>
+                <select
+                  value={roomNo}
+                  onChange={(e) => setRoomNo(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                >
+                  <option value="Room 101">Room 101 (Dermatology OPD)</option>
+                  <option value="Room 102">Room 102 (Laser Suite)</option>
+                  <option value="Room 103">Room 103 (Trichology Lab)</option>
+                  <option value="Room 104">Room 104 (Daycare Procedure Recliner)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Token Priority</label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                >
+                  <option value="Normal">Normal Queue</option>
+                  <option value="Urgent">Priority / Urgent Attention</option>
+                  <option value="VIP">VIP Client</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Chief Purpose / Symptom Note</label>
                 <input
                   type="text"
-                  placeholder="e.g. Skin pigmentation consult, acne review, laser session 2"
+                  placeholder="e.g. Acne consultation, pigmentation peel, skin glow review"
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
@@ -349,293 +938,44 @@ export default function PatientRegisterPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-            <button
-              onClick={() => setSavedPatient(null)}
-              className="text-slate-600 hover:text-slate-900 text-sm font-medium"
-            >
-              ← Edit Patient Details
-            </button>
-            <button
-              onClick={handleIssueToken}
-              disabled={tokenLoading || !selectedDoctorId}
-              className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-xs transition"
-            >
-              <Ticket className="w-4 h-4" />
-              {tokenLoading ? 'Issuing Token...' : 'Generate Token & Send to Queue'}
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* REGISTRATION FORM */
-        <form onSubmit={handleRegister} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
-          {/* Section 1: Demographics */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 text-violet-700">
-              1. Primary Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">First Name *</label>
-                <input
-                  type="text"
-                  name="first_name"
-                  required
-                  placeholder="Given name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Last / Family Name</label>
-                <input
-                  type="text"
-                  name="last_name"
-                  placeholder="Surname"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Mobile Phone *</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  required
-                  placeholder="10-digit mobile"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  onBlur={handlePhoneBlur}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Alternate Phone</label>
-                <input
-                  type="tel"
-                  name="alt_phone"
-                  placeholder="Optional alternate"
-                  value={formData.alt_phone}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="patient@example.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Gender *</label>
-                <select
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleChange}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                >
-                  <option value="Female">Female</option>
-                  <option value="Male">Male</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Date of Birth</label>
-                <input
-                  type="date"
-                  name="date_of_birth"
-                  value={formData.date_of_birth}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Age (Years)</label>
-                <input
-                  type="number"
-                  name="age_years"
-                  placeholder="e.g. 28"
-                  min="0"
-                  max="120"
-                  value={formData.age_years}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Blood Group</label>
-                <select
-                  name="blood_group"
-                  value={formData.blood_group}
-                  onChange={handleChange}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                >
-                  <option value="">Unknown / Not Tested</option>
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
-                    <option key={bg} value={bg}>{bg}</option>
-                  ))}
-                </select>
-              </div>
+          {/* STEP 5: REVIEW / EDIT / CONFIRM BUTTON */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-slate-900 text-white rounded-2xl shadow-md">
+            <div>
+              <p className="font-bold text-sm">
+                {selectedPatient 
+                  ? 'Confirm Visit & Sync Patient Master Profile' 
+                  : 'Register New Patient & Issue Consultation Token'}
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {selectedPatient 
+                  ? 'Saves modified demographic details to master records and queues token for doctor.' 
+                  : 'Assigns unique permanent OP number and puts token into the active queue.'}
+              </p>
             </div>
-          </div>
 
-          {/* Section 2: Guardian / Relative & Address */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 text-violet-700">
-              2. Address & Guardian
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex gap-2">
-                <div className="w-24 shrink-0">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Relation</label>
-                  <select
-                    name="relation_type"
-                    value={formData.relation_type}
-                    onChange={handleChange}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                  >
-                    <option value="S/o">S/o</option>
-                    <option value="D/o">D/o</option>
-                    <option value="W/o">W/o</option>
-                    <option value="H/o">H/o</option>
-                    <option value="Guardian">Guardian</option>
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Guardian Name</label>
-                  <input
-                    type="text"
-                    name="relative_name"
-                    placeholder="Relative name"
-                    value={formData.relative_name}
-                    onChange={handleChange}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                  />
-                </div>
-              </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleStartNewPatient}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-semibold"
+              >
+                Reset
+              </button>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">City / Town</label>
-                <input
-                  type="text"
-                  name="city"
-                  placeholder="e.g. Calicut"
-                  value={formData.city}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">District / State</label>
-                <input
-                  type="text"
-                  name="district"
-                  placeholder="e.g. Kozhikode, Kerala"
-                  value={formData.district}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Street Address</label>
-                <input
-                  type="text"
-                  name="address"
-                  placeholder="House name, street, landmark"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">PIN Code</label>
-                <input
-                  type="text"
-                  name="pincode"
-                  placeholder="6-digit PIN"
-                  maxLength={6}
-                  value={formData.pincode}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition"
+              >
+                <Ticket className="w-4 h-4" />
+                {loading 
+                  ? 'Processing Registration...' 
+                  : selectedPatient 
+                    ? 'Review / Edit / Confirm Visit' 
+                    : 'Create Visit Registration & Issue Token'}
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
-          </div>
-
-          {/* Section 3: Clinical Alerts */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 text-violet-700">
-              3. Clinical Notes & Allergies
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Consultation Category</label>
-                <select
-                  name="consultation_type"
-                  value={formData.consultation_type}
-                  onChange={handleChange}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                >
-                  <option value="Aesthetic">Aesthetic & Dermatology</option>
-                  <option value="General">General Medicine</option>
-                  <option value="Laser">Laser & Cosmetology</option>
-                  <option value="Trichology">Hair & Trichology</option>
-                  <option value="Weight Loss">Wellness & Nutrition</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Known Drug / Cosmetic Allergies
-                </label>
-                <input
-                  type="text"
-                  name="known_allergies"
-                  placeholder="e.g. Penicillin, Retinoids, Sulfa, None"
-                  value={formData.known_allergies}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => navigate('/reception/queue')}
-              className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-sm font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-xs transition"
-            >
-              <UserPlus className="w-4 h-4" />
-              {loading ? 'Saving Patient...' : 'Save & Proceed to Token Issue'}
-              <ArrowRight className="w-4 h-4" />
-            </button>
           </div>
         </form>
       )}

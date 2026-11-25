@@ -119,7 +119,7 @@ if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
 }
 
 export function subscribeToDbChanges(listener: () => void): () => void {
-  if (typeof window === 'undefined') return () => {};
+  if (typeof window === 'undefined') return () => { };
 
   const handleStorage = (e: StorageEvent) => {
     if (e.key === DB_KEY) {

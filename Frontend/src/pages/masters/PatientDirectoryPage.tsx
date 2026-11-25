@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users, 
-  Search, 
-  Ticket, 
-  Receipt, 
-  Edit3, 
-  UserPlus, 
+import {
+  Users,
+  Search,
+  Ticket,
+  Receipt,
+  Edit3,
+  UserPlus,
   Clock,
   Phone,
   Calendar,
@@ -37,8 +37,14 @@ export default function PatientDirectoryPage() {
     first_name: '',
     last_name: '',
     phone: '',
+    alt_phone: '',
     email: '',
+    age_years: '',
+    gender: 'Female',
+    blood_group: '',
     city: '',
+    district: '',
+    pincode: '',
     address: '',
     known_allergies: '',
   });
@@ -77,8 +83,14 @@ export default function PatientDirectoryPage() {
       first_name: p.first_name || '',
       last_name: p.last_name || '',
       phone: p.phone || '',
+      alt_phone: (p as any).alt_phone || '',
       email: p.email || '',
+      age_years: p.age_years ? String(p.age_years) : '',
+      gender: p.gender || 'Female',
+      blood_group: (p as any).blood_group || '',
       city: p.city || '',
+      district: (p as any).district || '',
+      pincode: (p as any).pincode || '',
       address: p.address || '',
       known_allergies: p.known_allergies || '',
     });
@@ -280,7 +292,7 @@ export default function PatientDirectoryPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Phone</label>
+                  <label className="block font-semibold text-slate-600 mb-1">Phone *</label>
                   <input
                     type="tel"
                     required
@@ -290,24 +302,92 @@ export default function PatientDirectoryPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-600 mb-1">Email</label>
+                  <label className="block font-semibold text-slate-600 mb-1">Alternate Phone</label>
                   <input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                    type="tel"
+                    value={editForm.alt_phone}
+                    onChange={(e) => setEditForm((f) => ({ ...f, alt_phone: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg p-2"
                   />
                 </div>
               </div>
 
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-600 mb-1">Gender</label>
+                  <select
+                    value={editForm.gender}
+                    onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value }))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2"
+                  >
+                    <option value="Female">Female</option>
+                    <option value="Male">Male</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-600 mb-1">Age (Years)</label>
+                  <input
+                    type="number"
+                    value={editForm.age_years}
+                    onChange={(e) => setEditForm((f) => ({ ...f, age_years: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-600 mb-1">Blood Group</label>
+                  <select
+                    value={editForm.blood_group}
+                    onChange={(e) => setEditForm((f) => ({ ...f, blood_group: e.target.value }))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2"
+                  >
+                    <option value="">Unknown</option>
+                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => (
+                      <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block font-semibold text-slate-600 mb-1">City</label>
+                <label className="block font-semibold text-slate-600 mb-1">Email</label>
                 <input
-                  type="text"
-                  value={editForm.city}
-                  onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
                   className="w-full border border-slate-300 rounded-lg p-2"
                 />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-600 mb-1">City</label>
+                  <input
+                    type="text"
+                    value={editForm.city}
+                    onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-600 mb-1">District</label>
+                  <input
+                    type="text"
+                    value={editForm.district}
+                    onChange={(e) => setEditForm((f) => ({ ...f, district: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-600 mb-1">PIN Code</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={editForm.pincode}
+                    onChange={(e) => setEditForm((f) => ({ ...f, pincode: e.target.value }))}
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
               </div>
 
               <div>
@@ -387,22 +467,20 @@ export default function PatientDirectoryPage() {
             <div className="flex items-center gap-2 border-b border-slate-100 pt-3 pb-2 shrink-0">
               <button
                 onClick={() => setActiveHistoryTab('consultations')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                  activeHistoryTab === 'consultations'
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${activeHistoryTab === 'consultations'
                     ? 'bg-violet-600 text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Doctor Write-Ups & Consultations ({historyData?.consultations?.length || 0})</span>
               </button>
               <button
                 onClick={() => setActiveHistoryTab('prescriptions')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
-                  activeHistoryTab === 'prescriptions'
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${activeHistoryTab === 'prescriptions'
                     ? 'bg-violet-600 text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                  }`}
               >
                 <Pill className="w-3.5 h-3.5" />
                 <span>Prescribed Medicines / Rx ({historyData?.prescriptions?.length || 0})</span>

@@ -26,6 +26,7 @@ export interface Patient {
   district?: string;
   pincode?: string;
   known_allergies?: string;
+  consultation_type?: string;
   balance_advance: number;
   created_at: string;
 }

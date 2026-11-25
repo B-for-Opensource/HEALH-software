@@ -41,9 +41,19 @@ class PatientUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+    alt_phone: Optional[str] = None
     email: Optional[str] = None
-    city: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    age_years: Optional[int] = None
+    gender: Optional[str] = None
+    blood_group: Optional[str] = None
+    relative_name: Optional[str] = None
+    relation_type: Optional[str] = None
     address: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    consultation_type: Optional[str] = None
     known_allergies: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -56,6 +66,9 @@ class AppointmentCreate(BaseModel):
     visit_type: Optional[str] = "Walk-in"
     consultation_type: Optional[str] = None
     purpose: Optional[str] = None
+    entry_department: Optional[str] = "Reception"
+    room_no: Optional[str] = None
+    priority: Optional[str] = "Normal"
 
 class AppointmentStatusUpdate(BaseModel):
     status: str

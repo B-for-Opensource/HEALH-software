@@ -9,9 +9,11 @@ import {
   Plus, 
   Barcode,
   Layers,
-  Sparkles
+  Sparkles,
+  UserCheck,
+  User
 } from 'lucide-react';
-import { pharmacyApi } from '@/api';
+import { pharmacyApi, patientsApi } from '@/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function PharmacyDispensaryPage() {
@@ -20,6 +22,11 @@ export default function PharmacyDispensaryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dispenseQty, setDispenseQty] = useState<Record<string, number>>({});
+
+  // OTC Bypass Patient Identification
+  const [otcPatientSearch, setOtcPatientSearch] = useState('');
+  const [otcPatientResults, setOtcPatientResults] = useState<any[]>([]);
+  const [selectedOtcPatient, setSelectedOtcPatient] = useState<any | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -42,6 +49,34 @@ export default function PharmacyDispensaryPage() {
     await pharmacyApi.dispenseRx(batchId, qty);
     alert(`Successfully dispensed ${qty} units. Pharmacy stock adjusted!`);
     loadData();
+  };
+
+  const handleOtcPatientSearch = async (val: string) => {
+    setOtcPatientSearch(val);
+    if (val.trim().length >= 2) {
+      try {
+        const res = await patientsApi.search(val.trim());
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        setOtcPatientResults(list);
+      } catch {
+        setOtcPatientResults([]);
+      }
+    } else {
+      setOtcPatientResults([]);
+    }
+  };
+
+  const handleSelectOtcPatient = (p: any) => {
+    setSelectedOtcPatient(p);
+    setOtcPatientSearch(`${p.op_no} — ${p.first_name} ${p.last_name || ''}`);
+    setOtcPatientResults([]);
+  };
+
+  const handleQuickRetailBill = (itemName: string, price: number) => {
+    const clientDesc = selectedOtcPatient 
+      ? `Patient: ${selectedOtcPatient.first_name} ${selectedOtcPatient.last_name || ''} (OP #${selectedOtcPatient.op_no})` 
+      : 'Walk-in Retail Customer';
+    alert(`✅ Quick Retail Bill Generated!\n\nItem: ${itemName} (${formatCurrency(price)})\nClient: ${clientDesc}\nChannel: Direct Pharmacy OTC (No doctor consultation token created)\nInventory stock adjusted!`);
   };
 
   const filteredBatches = batches.filter((b) =>
@@ -224,15 +259,69 @@ export default function PharmacyDispensaryPage() {
       )}
 
       {activeTab === 'otc' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
             <div>
               <h3 className="font-bold text-base text-slate-900">[SCR-31] Walk-in Retail & OTC Cosmeceuticals POS</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Direct retail sale for sunscreens, serums & cleansers without OP token</p>
+              <p className="text-xs text-slate-500 mt-0.5">Direct retail sale for sunscreens, serums & cleansers (Bypass Registration: No doctor OP token needed)</p>
             </div>
-            <span className="text-xs font-bold text-violet-700 bg-violet-50 px-3 py-1 rounded-full">
-              Walk-in Retail Mode
+            <span className="text-xs font-bold text-violet-700 bg-violet-50 px-3 py-1 rounded-full border border-violet-200">
+              Direct Pharmacy Entry
             </span>
+          </div>
+
+          {/* Quick Patient Identification (Bypass Registration) */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Search className="w-3.5 h-3.5 text-violet-600" />
+                Optional: Link to Existing Patient Profile (Search OP # / Mobile / Name)
+              </label>
+              {selectedOtcPatient && (
+                <button
+                  type="button"
+                  onClick={() => { setSelectedOtcPatient(null); setOtcPatientSearch(''); }}
+                  className="text-[11px] font-semibold text-rose-600 hover:underline"
+                >
+                  Clear (Switch to Walk-in Retail)
+                </button>
+              )}
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by Mobile, OP Number or Name to associate purchase with patient record..."
+                value={otcPatientSearch}
+                onChange={(e) => handleOtcPatientSearch(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-violet-500 focus:outline-none"
+              />
+              {otcPatientResults.length > 0 && (
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto divide-y divide-slate-100">
+                  {otcPatientResults.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => handleSelectOtcPatient(p)}
+                      className="p-2.5 hover:bg-violet-50 cursor-pointer flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <span className="font-mono font-bold text-violet-700 mr-2">{p.op_no}</span>
+                        <span className="font-semibold text-slate-900">{p.first_name} {p.last_name || ''}</span>
+                        <span className="text-[11px] text-slate-400 ml-2">({p.phone})</span>
+                      </div>
+                      <span className="text-violet-600 font-bold text-[11px]">+ Select Patient</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {selectedOtcPatient && (
+              <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Linked Customer: <strong>{selectedOtcPatient.first_name} {selectedOtcPatient.last_name || ''}</strong> (OP #{selectedOtcPatient.op_no})</span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -242,7 +331,7 @@ export default function PharmacyDispensaryPage() {
               <p className="text-xs text-slate-500">Broad Spectrum PA+++ · Water Resistant</p>
               <p className="text-lg font-black text-emerald-700 mt-2">₹750.00</p>
               <button
-                onClick={() => alert('Item added to retail checkout cart')}
+                onClick={() => handleQuickRetailBill('UV-DOUX Sunscreen Gel SPF 50', 750)}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg"
               >
                 + Quick Retail Bill
@@ -255,7 +344,7 @@ export default function PharmacyDispensaryPage() {
               <p className="text-xs text-slate-500">Pure L-Ascorbic Acid + Ferulic Boost</p>
               <p className="text-lg font-black text-emerald-700 mt-2">₹1,250.00</p>
               <button
-                onClick={() => alert('Item added to retail checkout cart')}
+                onClick={() => handleQuickRetailBill('C-Glow Vitamin C 20% Serum', 1250)}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg"
               >
                 + Quick Retail Bill
@@ -268,7 +357,7 @@ export default function PharmacyDispensaryPage() {
               <p className="text-xs text-slate-500">Glycolic 6% + Aloe Vera extract</p>
               <p className="text-lg font-black text-emerald-700 mt-2">₹425.00</p>
               <button
-                onClick={() => alert('Item added to retail checkout cart')}
+                onClick={() => handleQuickRetailBill('Ahaglow Gentle Exfoliating Wash', 425)}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg"
               >
                 + Quick Retail Bill
