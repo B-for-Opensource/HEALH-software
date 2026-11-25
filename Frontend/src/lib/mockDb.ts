@@ -22,6 +22,9 @@ import {
   INITIAL_COMMISSIONS,
   INITIAL_CASHIER_SHIFTS,
   INITIAL_AUDIT_LOGS,
+  INITIAL_LAB_ORDERS,
+  STANDARD_NURSING_PROCEDURES,
+  INITIAL_NURSING_PROCEDURES,
 } from './mockData';
 
 const DB_KEY = 'HEAL_CLINIC_DB_V2';
@@ -51,6 +54,8 @@ export interface MockDatabase {
   commissions: any[];
   cashier_shifts: any[];
   audit_logs: any[];
+  lab_orders: any[];
+  nursing_procedures: any[];
 }
 
 export function getDefaultDb(): MockDatabase {
@@ -79,6 +84,8 @@ export function getDefaultDb(): MockDatabase {
     commissions: JSON.parse(JSON.stringify(INITIAL_COMMISSIONS)),
     cashier_shifts: JSON.parse(JSON.stringify(INITIAL_CASHIER_SHIFTS)),
     audit_logs: JSON.parse(JSON.stringify(INITIAL_AUDIT_LOGS)),
+    lab_orders: JSON.parse(JSON.stringify(INITIAL_LAB_ORDERS)),
+    nursing_procedures: JSON.parse(JSON.stringify(INITIAL_NURSING_PROCEDURES)),
   };
 }
 
@@ -520,20 +527,45 @@ export const mockPatientsService = {
     const prescriptions = (db.prescriptions || []).filter((p) => p.patient_id === id);
     const bills = (db.bills || []).filter((b) => b.patient_id === id);
     const sessions = (db.package_sessions || []).filter((s) => s.patient_id === id);
+    const labOrders = (db.lab_orders || []).filter((lo) => lo.patient_id === id);
+    const nursingProcedures = (db.nursing_procedures || []).filter((np) => np.patient_id === id);
 
     const enrichedConsults = consults.map((c) => {
       const rx = prescriptions.find((p) => p.consultation_id === c.id);
+      const doctor = db.staff.find((s) => s.id === c.doctor_id);
       return {
         ...c,
+        doctor_name: c.doctor_name || doctor?.full_name || 'Dr. Ananya Nair',
         prescription: rx || prescriptions[0] || null,
       };
     });
+
+    // Unified Chronological Medical Timeline Grouped by Date
+    const allDates = Array.from(
+      new Set([
+        ...consults.map((c) => (c.consult_date || c.created_at || '').split('T')[0]),
+        ...prescriptions.map((p) => (p.created_at || '').split('T')[0]),
+        ...labOrders.map((l) => (l.order_date || '').split('T')[0]),
+        ...nursingProcedures.map((n) => (n.date || n.created_at || '').split('T')[0]),
+      ])
+    ).filter(Boolean).sort().reverse();
+
+    const timelineByDate = allDates.map((dateStr) => ({
+      date: dateStr,
+      consultations: enrichedConsults.filter((c) => (c.consult_date || c.created_at || '').startsWith(dateStr)),
+      prescriptions: prescriptions.filter((p) => (p.created_at || '').startsWith(dateStr)),
+      lab_orders: labOrders.filter((l) => (l.order_date || '').startsWith(dateStr)),
+      nursing_procedures: nursingProcedures.filter((n) => (n.date || n.created_at || '').startsWith(dateStr)),
+    }));
 
     return {
       consultations: enrichedConsults,
       prescriptions,
       bills,
       treatment_sessions: sessions,
+      lab_orders: labOrders,
+      nursing_procedures: nursingProcedures,
+      timeline_by_date: timelineByDate,
     };
   },
 
@@ -598,12 +630,49 @@ export const mockPatientsService = {
 export const mockAppointmentsService = {
   queue: async (params?: any) => {
     const db = getDb();
-    return db.appointments;
+    let appts = db.appointments || [];
+    if (params?.doctor_id && params.doctor_id !== 'all') {
+      appts = appts.filter(
+        (a) =>
+          a.doctor_id === params.doctor_id ||
+          (a.doctor_name && a.doctor_name.toLowerCase().includes(params.doctor_id.toLowerCase()))
+      );
+    }
+    if (params?.status && params.status !== 'all') {
+      appts = appts.filter((a) => a.status === params.status);
+    }
+    return appts;
   },
 
   followups: async (params?: any) => {
     const db = getDb();
-    return db.followups;
+    let flws = db.followups || [];
+    if (params?.doctor_id && params.doctor_id !== 'all') {
+      flws = flws.filter(
+        (f) =>
+          f.doctor_id === params.doctor_id ||
+          (f.doctor_name && f.doctor_name.toLowerCase().includes(params.doctor_id.toLowerCase()))
+      );
+    }
+    if (params?.range === 'next_3_days') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const in3Days = new Date();
+      in3Days.setDate(in3Days.getDate() + 3);
+      in3Days.setHours(23, 59, 59, 999);
+      flws = flws.filter((f) => {
+        const dStr = (f.review_date || f.appointment_date || '').split('T')[0];
+        if (!dStr) return true;
+        const d = new Date(dStr);
+        return d >= today && d <= in3Days;
+      });
+    } else if (params?.date) {
+      flws = flws.filter((f) => {
+        const dStr = (f.review_date || f.appointment_date || '').split('T')[0];
+        return dStr === params.date;
+      });
+    }
+    return flws;
   },
 
   get: async (id: string) => {
@@ -1225,6 +1294,209 @@ export const mockHrmsService = {
       return db.commissions[idx];
     }
     return null;
+  },
+};
+
+// ======================== LAB ORDERS & DIAGNOSTICS ========================
+export const mockLabService = {
+  list: async (params?: any) => {
+    const db = getDb();
+    let orders = db.lab_orders || [];
+    if (params?.patient_id) {
+      orders = orders.filter((o) => o.patient_id === params.patient_id);
+    }
+    if (params?.status && params.status !== 'all') {
+      orders = orders.filter((o) => o.status === params.status);
+    }
+    return orders;
+  },
+
+  create: async (data: any) => {
+    const db = getDb();
+    if (!db.lab_orders) db.lab_orders = [];
+    const newOrder = {
+      id: uid('lab'),
+      token_no: db.lab_orders.length + 1,
+      patient_id: data.patient_id,
+      patient_name: data.patient_name || 'Patient',
+      op_no: data.op_no || 'OP-NEW',
+      phone: data.phone || '',
+      doctor_id: data.doctor_id || '',
+      doctor_name: data.doctor_name || 'Consulting Doctor',
+      test_name: data.test_name,
+      test_code: data.test_code || 'LAB-TEST',
+      category: data.category || 'Clinical Pathology',
+      status: 'Ordered',
+      priority: data.priority || 'Routine',
+      order_date: new Date().toISOString().split('T')[0],
+      order_time: new Date().toLocaleTimeString(),
+      sample_type: data.sample_type || 'Blood / Serum',
+      notes: data.notes || '',
+      result_summary: '',
+      result_date: null,
+      technician: null,
+    };
+    db.lab_orders.unshift(newOrder);
+    saveDb(db);
+    return newOrder;
+  },
+
+  updateStatus: async (id: string, status: string, resultData?: any) => {
+    const db = getDb();
+    const idx = (db.lab_orders || []).findIndex((o) => o.id === id);
+    if (idx !== -1) {
+      db.lab_orders[idx].status = status;
+      if (status === 'Completed') {
+        db.lab_orders[idx].result_date = new Date().toISOString().split('T')[0];
+        db.lab_orders[idx].result_summary = typeof resultData === 'string' ? resultData : (resultData?.result_summary || 'Normal physiological limits. Findings reviewed by Lab Pathologist.');
+        db.lab_orders[idx].technician = resultData?.technician || 'Senior Lab Technician';
+      }
+      saveDb(db);
+      return db.lab_orders[idx];
+    }
+    throw { response: { status: 404, data: { message: 'Lab order not found' } } };
+  },
+};
+
+// ======================== NURSING PROCEDURES & CLINIC DESK ========================
+export const mockNursingService = {
+  list: async (params?: any) => {
+    const db = getDb();
+    let list = db.nursing_procedures || [];
+    if (params?.patient_id) {
+      list = list.filter((p) => p.patient_id === params.patient_id);
+    }
+    if (params?.status && params.status !== 'all') {
+      list = list.filter((p) => p.status === params.status);
+    }
+    if (params?.date) {
+      list = list.filter((p) => p.date === params.date);
+    }
+    if (params?.referred_by) {
+      list = list.filter((p) => p.referred_by === params.referred_by);
+    }
+    return list;
+  },
+
+  create: async (data: any) => {
+    const db = getDb();
+    if (!db.nursing_procedures) db.nursing_procedures = [];
+    const patient = db.patients.find((p) => p.id === data.patient_id);
+    const newProc = {
+      id: uid('nproc'),
+      patient_id: data.patient_id || 'pat-walkin',
+      patient_name: data.patient_name || (patient ? `${patient.first_name} ${patient.last_name || ''}`.trim() : 'Walk-in Patient'),
+      op_no: data.op_no || patient?.op_no || 'OP-NURSE',
+      phone: data.phone || patient?.phone || '',
+      doctor_id: data.doctor_id || null,
+      doctor_name: data.doctor_name || null,
+      referred_by: data.referred_by || (data.doctor_name ? 'Doctor' : 'Direct Walk-in'),
+      procedure_name: data.procedure_name,
+      procedure_category: data.procedure_category || 'Wound Care / Injection',
+      nurse_id: data.nurse_id || 'staff-ther-001',
+      nurse_name: data.nurse_name || 'Anjali Pillai',
+      price: Number(data.price) || 150,
+      price_type: data.price_type || 'catalog',
+      vitals: data.vitals || null,
+      notes: data.notes || '',
+      status: data.status || 'Completed',
+      date: data.date || new Date().toISOString().split('T')[0],
+      time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: new Date().toISOString(),
+    };
+
+    db.nursing_procedures.unshift(newProc);
+
+    // Also auto-generate procedure bill in bills collection
+    if (newProc.status === 'Completed' && newProc.price > 0) {
+      const billId = uid('bill');
+      db.bills.unshift({
+        id: billId,
+        bill_number: `BILL-PROC-${Date.now().toString().slice(-4)}`,
+        patient_id: newProc.patient_id,
+        patient_name: newProc.patient_name,
+        op_no: newProc.op_no,
+        doctor_id: newProc.doctor_id,
+        doctor_name: newProc.doctor_name || 'Nurse Clinic Station',
+        bill_date: newProc.date,
+        total_amount: newProc.price,
+        discount_amount: 0,
+        tax_amount: 0,
+        net_amount: newProc.price,
+        amount_paid: newProc.price,
+        balance_amount: 0,
+        payment_mode: 'Cash',
+        status: 'Paid',
+        items: [
+          {
+            item_type: 'Procedure',
+            item_name: `${newProc.procedure_name} (Nurse: ${newProc.nurse_name})`,
+            quantity: 1,
+            unit_price: newProc.price,
+            net_price: newProc.price,
+          },
+        ],
+      });
+    }
+
+    saveDb(db);
+    return newProc;
+  },
+
+  updateStatus: async (id: string, status: string, notes?: string, vitals?: any) => {
+    const db = getDb();
+    const idx = (db.nursing_procedures || []).findIndex((p) => p.id === id);
+    if (idx !== -1) {
+      db.nursing_procedures[idx].status = status;
+      if (notes) db.nursing_procedures[idx].notes = notes;
+      if (vitals) db.nursing_procedures[idx].vitals = vitals;
+
+      const proc = db.nursing_procedures[idx];
+      // When a procedure is completed by nurse, auto-generate the procedure bill
+      if (status === 'Completed' && proc.price > 0) {
+        const existingBill = (db.bills || []).find(
+          (b) => b.patient_id === proc.patient_id && b.items?.some((it: any) => it.item_name?.includes(proc.procedure_name))
+        );
+        if (!existingBill) {
+          const billId = uid('bill');
+          db.bills.unshift({
+            id: billId,
+            bill_number: `BILL-PROC-${Date.now().toString().slice(-4)}`,
+            patient_id: proc.patient_id,
+            patient_name: proc.patient_name,
+            op_no: proc.op_no,
+            doctor_id: proc.doctor_id,
+            doctor_name: proc.doctor_name || 'Nurse Clinic Station',
+            bill_date: proc.date || new Date().toISOString().split('T')[0],
+            total_amount: proc.price,
+            discount_amount: 0,
+            tax_amount: 0,
+            net_amount: proc.price,
+            amount_paid: proc.price,
+            balance_amount: 0,
+            payment_mode: 'Cash',
+            status: 'Paid',
+            items: [
+              {
+                item_type: 'Procedure',
+                item_name: `${proc.procedure_name} (Nurse: ${proc.nurse_name})`,
+                quantity: 1,
+                unit_price: proc.price,
+                net_price: proc.price,
+              },
+            ],
+          });
+        }
+      }
+
+      saveDb(db);
+      return db.nursing_procedures[idx];
+    }
+    throw { response: { status: 404, data: { message: 'Procedure not found' } } };
+  },
+
+  catalogue: async () => {
+    return STANDARD_NURSING_PROCEDURES;
   },
 };
 

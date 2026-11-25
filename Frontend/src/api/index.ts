@@ -14,6 +14,8 @@ import {
   mockPharmacyService,
   mockInventoryService,
   mockHrmsService,
+  mockLabService,
+  mockNursingService,
   mockShiftService,
   mockAuditService,
   mockBranchService,
@@ -133,6 +135,21 @@ export const hrmsApi = {
   listRoster:        (): Promise<any>       => mockHrmsService.listRoster(),
   listCommissions:   (): Promise<any>       => mockHrmsService.listCommissions(),
   approveCommission: (id: string): Promise<any> => mockHrmsService.approveCommission(id),
+};
+
+// ----- LAB & DIAGNOSTICS -----
+export const labApi = {
+  list:         (params?: any): Promise<any> => mockLabService.list(params),
+  create:       (data: any): Promise<any>   => mockLabService.create(data),
+  updateStatus: (id: string, status: string, resultData?: any): Promise<any> => mockLabService.updateStatus(id, status, resultData),
+};
+
+// ----- NURSING PROCEDURES & CLINIC DESK -----
+export const nursingApi = {
+  list:         (params?: any): Promise<any> => mockNursingService.list(params),
+  create:       (data: any): Promise<any>   => mockNursingService.create(data),
+  updateStatus: (id: string, status: string, notes?: string, vitals?: any): Promise<any> => mockNursingService.updateStatus(id, status, notes, vitals),
+  catalogue:    (): Promise<any>            => mockNursingService.catalogue(),
 };
 
 // ----- CASHIER SHIFTS & DRAWER RECONCILIATION -----

@@ -13,9 +13,12 @@ import {
   X
 } from 'lucide-react';
 import { mastersApi } from '@/api';
+import { useAuthStore } from '@/store/authStore';
 import type { Staff, Department } from '@/types';
 
 export default function DoctorsStaffPage() {
+  const user = useAuthStore((s) => s.user);
+  const isSuperUser = ['Super Admin', 'Admin', 'Branch Manager'].includes(user?.role || '');
   const [staffList, setStaffList] = useState<any[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +138,30 @@ export default function DoctorsStaffPage() {
         return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
+
+  if (!isSuperUser) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-8 text-center space-y-4">
+          <div className="w-16 h-16 bg-rose-100 text-rose-700 rounded-full flex items-center justify-center mx-auto text-2xl">
+            🔒
+          </div>
+          <h2 className="text-xl font-bold text-rose-900">Restricted Administration Area</h2>
+          <p className="text-sm text-rose-700 max-w-md mx-auto">
+            Doctor Profiles, User Credentials, and Role-Based Access Controls (RBAC) are restricted to Clinic Directors and Super Administrators only.
+          </p>
+          <div className="pt-2">
+            <button
+              onClick={() => window.history.back()}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-xl text-xs transition"
+            >
+              Return to Previous Page
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">

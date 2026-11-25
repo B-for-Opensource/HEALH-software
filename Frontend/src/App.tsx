@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { ProtectedRoute, getDefaultRouteForRole } from '@/components/layout/ProtectedRoute';
 import { useAuthStore } from '@/store/authStore';
 import { mockBranchService } from '@/api';
 
@@ -11,6 +11,7 @@ import PatientRegisterPage from '@/pages/reception/PatientRegisterPage';
 import AppointmentCalendarPage from '@/pages/reception/AppointmentCalendarPage';
 import FollowUpQueuePage from '@/pages/reception/FollowUpQueuePage';
 import DoctorWorkbenchPage from '@/pages/clinical/DoctorWorkbenchPage';
+import LabOrdersPage from '@/pages/lab/LabOrdersPage';
 import PackagesPage from '@/pages/aesthetic/PackagesPage';
 import PhotoVaultPage from '@/pages/aesthetic/PhotoVaultPage';
 import DaycareLoungePage from '@/pages/daycare/DaycareLoungePage';
@@ -49,6 +50,11 @@ function BranchRouteHandler({ branchId, target = "/reception/queue" }: { branchI
   return <Navigate to={target} replace />;
 }
 
+function RootRouteHandler() {
+  const user = useAuthStore((s) => s.user);
+  return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
@@ -63,7 +69,7 @@ export default function App() {
           <Route path="/4" element={<BranchRouteHandler branchId="all" target="/reports/dashboard" />} />
 
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Navigate to="/reception/queue" replace />} />
+            <Route path="/" element={<RootRouteHandler />} />
             
             {/* 1. Reception & Outpatients */}
             <Route path="/reception/register"         element={<PatientRegisterPage />} />
@@ -74,6 +80,7 @@ export default function App() {
             {/* 2. Clinical EMR */}
             <Route path="/clinical/workbench"         element={<DoctorWorkbenchPage />} />
             <Route path="/clinical/workbench/:apptId" element={<DoctorWorkbenchPage />} />
+            <Route path="/clinical/lab"               element={<LabOrdersPage />} />
 
             {/* 3. Aesthetic Care */}
             <Route path="/aesthetic/packages"         element={<PackagesPage />} />

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEAL Clinic — Multi-Branch Cross-Origin Storage Hub</title>
+</head>
+<body style="background:#0f172a;color:#94a3b8;font-family:system-ui, sans-serif;padding:24px;text-align:center;">
+  <div style="max-width:500px;margin:40px auto;border:1px solid #334155;border-radius:12px;padding:24px;background:#1e293b;">
+    <h2 style="color:#f8fafc;margin:0 0 8px 0;font-size:18px;">HEAL Clinic Storage Hub</h2>
+    <p style="font-size:13px;line-height:1.5;">This iframe bridge enables seamless cross-origin localStorage data synchronization between separate Netlify branch deployments (Karanthoor, Beach Road, Wayanad, and HQ).</p>
+    <div style="display:inline-block;padding:6px 14px;background:#059669;color:#fff;border-radius:9999px;font-size:11px;font-weight:bold;margin-top:12px;">
+      Storage Hub Active
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const DB_KEY = 'HEAL_CLINIC_DB_V2';
+      let channel = null;
+      try {
+        if ('BroadcastChannel' in window) {
+          channel = new BroadcastChannel('HEAL_SYNC_CHANNEL');
+        }
+      } catch (err) {}
+
+      window.addEventListener('message', function(event) {
+        const data = event.data;
+        if (!data || typeof data !== 'object') return;
+
+        const { action, payload, requestId } = data;
+
+        // Parent requests full DB
+        if (action === 'HEAL_GET_DB') {
+          let parsed = null;
+          try {
+            const raw = localStorage.getItem(DB_KEY);
+            parsed = raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            console.error('Storage Hub read error:', e);
+          }
+          if (event.source) {
+            event.source.postMessage({
+              action: 'HEAL_DB_DATA',
+              payload: parsed,
+              requestId: requestId
+            }, '*');
+          }
+        }
+
+        // Parent saves DB
+        if (action === 'HEAL_SAVE_DB') {
+          if (payload) {
+            try {
+              localStorage.setItem(DB_KEY, JSON.stringify(payload));
+              if (channel) {
+                channel.postMessage({ type: 'DB_MUTATED', timestamp: Date.now() });
+              }
+              if (event.source) {
+                event.source.postMessage({
+                  action: 'HEAL_SAVE_CONFIRMED',
+                  requestId: requestId
+                }, '*');
+              }
+            } catch (e) {
+              console.error('Storage Hub write error:', e);
+            }
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

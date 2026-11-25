@@ -17,11 +17,25 @@ import { pharmacyApi, patientsApi } from '@/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function PharmacyDispensaryPage() {
-  const [activeTab, setActiveTab] = useState<'batches' | 'dispensing' | 'otc'>('batches');
+  const [activeTab, setActiveTab] = useState<'batches' | 'dispensing' | 'otc' | 'substitution'>('batches');
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dispenseQty, setDispenseQty] = useState<Record<string, number>>({});
+  const [selectedMolecule, setSelectedMolecule] = useState<string>('Tretinoin');
+
+  const COMMON_MOLECULES = [
+    'Tretinoin',
+    'Minoxidil',
+    'Azelaic Acid',
+    'Doxycycline',
+    'Salicylic Acid',
+    'Hydroquinone',
+    'Clobetasol Propionate',
+    'Ketoconazole',
+    'Cetirizine',
+    'Paracetamol',
+  ];
 
   // OTC Bypass Patient Identification
   const [otcPatientSearch, setOtcPatientSearch] = useState('');
@@ -122,6 +136,15 @@ export default function PharmacyDispensaryPage() {
             }`}
           >
             OTC Cosmeceuticals POS
+          </button>
+          <button
+            onClick={() => setActiveTab('substitution')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1 ${
+              activeTab === 'substitution' ? 'bg-violet-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>Chemical Family Substitution</span>
           </button>
         </div>
       </div>
@@ -363,6 +386,127 @@ export default function PharmacyDispensaryPage() {
                 + Quick Retail Bill
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHEMICAL COMPONENT & MOLECULE SUBSTITUTION TAB */}
+      {activeTab === 'substitution' && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-violet-600" />
+                <span>Chemical Molecule Family & Bioequivalent Substitution</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Pharmacist generic substitution: view all brand formulations and batches sharing the same chemical molecule when prescribed brand is low in stock
+              </p>
+            </div>
+            <span className="text-xs font-semibold bg-violet-50 text-violet-700 px-3 py-1 rounded-full border border-violet-200">
+              CDSCO / FDA Generic Equivalent Compliant
+            </span>
+          </div>
+
+          {/* Molecule Selector Pills */}
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 block mb-2">
+              Select Active Chemical Component / Molecule Family:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {COMMON_MOLECULES.map((mol) => (
+                <button
+                  key={mol}
+                  type="button"
+                  onClick={() => setSelectedMolecule(mol)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    selectedMolecule === mol
+                      ? 'bg-violet-700 text-white shadow-xs'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  <span>🧪</span>
+                  <span>{mol}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Molecule Info Banner */}
+          <div className="p-4 bg-violet-50/70 border border-violet-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <span className="font-bold text-violet-950 text-sm">
+                Chemical Family: {selectedMolecule}
+              </span>
+              <p className="text-xs text-violet-800 mt-0.5">
+                Showing all in-stock pharmacy batches containing active {selectedMolecule}. Pharmacists may substitute across equivalent strengths.
+              </p>
+            </div>
+            <span className="text-xs font-bold bg-white text-violet-800 px-3 py-1 rounded-lg border border-violet-200 shrink-0">
+              {batches.filter((b) => (b.generic_name || '').toLowerCase().includes(selectedMolecule.toLowerCase()) || (b.medicine_name || '').toLowerCase().includes(selectedMolecule.toLowerCase())).length} Batches in Stock
+            </span>
+          </div>
+
+          {/* Matching Equivalent Batches Table */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+                <tr>
+                  <th className="py-3 px-4">Brand Medicine & Strength</th>
+                  <th className="py-3 px-4">Active Chemical Molecule</th>
+                  <th className="py-3 px-4">Batch Number</th>
+                  <th className="py-3 px-4">FEFO Expiry</th>
+                  <th className="py-3 px-4 text-right">Available Stock</th>
+                  <th className="py-3 px-4 text-right">MRP</th>
+                  <th className="py-3 px-4">Rack Bin</th>
+                  <th className="py-3 px-4 text-right">Substitution Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {batches
+                  .filter((b) =>
+                    (b.generic_name || '').toLowerCase().includes(selectedMolecule.toLowerCase()) ||
+                    (b.medicine_name || '').toLowerCase().includes(selectedMolecule.toLowerCase())
+                  )
+                  .map((b) => (
+                    <tr key={b.id} className="hover:bg-slate-50/70">
+                      <td className="py-3 px-4">
+                        <p className="font-bold text-slate-900 text-sm">{b.medicine_name}</p>
+                        <p className="text-[11px] text-slate-500 font-mono">Form: {b.dosage_form || 'Formulation'}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded">
+                          {b.generic_name || selectedMolecule}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-slate-700">
+                        {b.batch_no}
+                      </td>
+                      <td className="py-3 px-4 text-slate-800 font-medium">
+                        {formatDate(b.expiry_date)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-violet-700 text-sm">
+                        {b.stock_qty} <span className="text-[11px] font-normal text-slate-400">{b.unit}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-slate-900">
+                        {formatCurrency(b.mrp)}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-600">
+                        {b.location}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDispense(b.id)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-xs transition"
+                        >
+                          Dispense Brand
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

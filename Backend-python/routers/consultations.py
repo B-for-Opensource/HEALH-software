@@ -17,12 +17,21 @@ def get_consultations(
     db: Session = Depends(get_db),
     current_user: models.Staff = Depends(get_current_user)
 ):
+    if current_user.role == "Receptionist":
+        return schemas.ApiResponse(success=True, data=[])
+
     if appointment_id:
-        c = db.query(models.Consultation).filter(models.Consultation.appointment_id == appointment_id).order_by(desc(models.Consultation.created_at)).first()
+        query = db.query(models.Consultation).filter(models.Consultation.appointment_id == appointment_id)
+        if current_user.role == "Doctor":
+            query = query.filter(models.Consultation.doctor_id == current_user.id)
+        c = query.order_by(desc(models.Consultation.created_at)).first()
         return schemas.ApiResponse(success=True, data=c.__dict__ if c else None)
 
     if patient_id:
-        consults = db.query(models.Consultation).filter(models.Consultation.patient_id == patient_id).order_by(desc(models.Consultation.consult_date)).all()
+        query = db.query(models.Consultation).filter(models.Consultation.patient_id == patient_id)
+        if current_user.role == "Doctor":
+            query = query.filter(models.Consultation.doctor_id == current_user.id)
+        consults = query.order_by(desc(models.Consultation.consult_date)).all()
         return schemas.ApiResponse(success=True, data=[c.__dict__ for c in consults])
 
     return schemas.ApiResponse(success=True, data=[])
@@ -36,6 +45,12 @@ def get_consultation(
     c = db.query(models.Consultation).filter(models.Consultation.id == consultation_id).first()
     if not c:
         raise HTTPException(status_code=404, detail="Consultation record not found")
+
+    if current_user.role == "Receptionist":
+        raise HTTPException(status_code=403, detail="Access denied: Front desk personnel are not authorized to view clinical medical consultations")
+
+    if current_user.role == "Doctor" and c.doctor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied: Clinical notes belong to another consulting doctor")
 
     p = db.query(models.Patient).filter(models.Patient.id == c.patient_id).first()
     doc = db.query(models.Staff).filter(models.Staff.id == c.doctor_id).first()

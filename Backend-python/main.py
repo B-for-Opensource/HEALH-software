@@ -63,16 +63,30 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Middleware (Allows React frontend communication)
+# CORS Middleware (Supports 3 Dedicated Frontends: Core, HRMS, and Pharmacy)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://healh-software.netlify.app",
         "https://heal-final-os.netlify.app",
+        "https://heal-hrms.netlify.app",
+        "https://heal-pharmacy.netlify.app",
+        # Core Frontend (Port 3000 / 5173)
         "http://localhost:3000",
         "http://localhost:5173",
-        "http://localhost:4173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
+        # HRMS Dedicated Frontend (Port 3001 / 5174)
+        "http://localhost:3001",
+        "http://localhost:5174",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:5174",
+        # Pharmacy Dedicated Frontend (Port 3002 / 5175)
+        "http://localhost:3002",
+        "http://localhost:5175",
+        "http://127.0.0.1:3002",
+        "http://127.0.0.1:5175",
+        "http://localhost:4173",
         "http://127.0.0.1:4173",
     ],
     allow_origin_regex=r"^https?://.*",

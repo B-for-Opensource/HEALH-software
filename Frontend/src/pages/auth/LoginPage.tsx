@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, resetDatabaseToDefaults, mockBranchService } from '@/api';
+import { getDefaultRouteForRole } from '@/components/layout/ProtectedRoute';
 import HealLogo from '@/components/shared/HealLogo';
 import { ShieldCheck, RotateCcw, MapPin, Sparkles, ArrowRight } from 'lucide-react';
 
@@ -44,7 +45,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login({ username, password });
       login(res.token, res.user);
-      navigate('/reception/queue');
+      navigate(getDefaultRouteForRole(res.user?.role));
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||

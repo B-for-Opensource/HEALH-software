@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@theme {
+  --color-heal-bronze: #965f36;
+  --color-heal-bronze-dark: #7a4a27;
+  --color-heal-terracotta: #9b5229;
+  --color-heal-amber: #faae5a;
+  --color-heal-amber-hover: #e89d49;
+  --color-heal-amber-light: #fff8ee;
+  --color-heal-cream: #faf7f2;
+  --color-heal-warm-white: #fdfbf7;
+  --color-heal-dark: #1e1b18;
+  --color-heal-espresso: #241c18;
+  --color-heal-muted: #685b52;
+  --color-heal-border: #ede6dd;
+
+  --color-zoho-navy: #16233B;
+  --color-zoho-dark: #0F172A;
+  --color-zoho-blue: #0F6CBD;
+  --color-zoho-lightblue: #E0F2FE;
+  --color-zoho-red: #E11D48;
+  --color-zoho-accent: #0284C7;
+  --color-zoho-gray: #F8FAFC;
+  --color-zoho-border: #E2E8F0;
+  --color-zoho-textDark: #1E293B;
+  --color-zoho-textMuted: #64748B;
+
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  :root {
+    --heal-primary: #965f36;
+    --heal-primary-dark: #7a4a27;
+    --heal-secondary: #9b5229;
+    --heal-accent: #faae5a;
+    --heal-accent-hover: #e89d49;
+    --heal-cream: #faf7f2;
+    --heal-dark: #1e1b18;
+    --heal-border: #ede6dd;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #faf7f2;
+    color: #1e1b18;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Custom Aesthetic Brand Utilities */
+.font-brand-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-brand-sans {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.btn-heal-amber {
+  background-color: #faae5a;
+  color: #ffffff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.btn-heal-amber:hover {
+  background-color: #e89d49;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(250, 174, 90, 0.35);
+}
+
+.btn-heal-bronze {
+  background-color: #965f36;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.btn-heal-bronze:hover {
+  background-color: #7a4a27;
+}
+
+.bg-heal-ivory {
+  background-color: #fdfbf7;
+}
+
+.bg-heal-cream {
+  background-color: #faf7f2;
+}
+
+.bg-heal-espresso {
+  background-color: #1e1815;
+}
+
+.border-heal-warm {
+  border-color: #ede6dd;
+}

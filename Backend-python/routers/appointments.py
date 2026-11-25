@@ -28,9 +28,13 @@ def get_followups(
 ):
     target_date = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else date.today()
 
-    consults = db.query(models.Consultation).filter(
+    consults_query = db.query(models.Consultation).filter(
         models.Consultation.review_date == target_date
-    ).all()
+    )
+    if current_user.role == "Doctor":
+        consults_query = consults_query.filter(models.Consultation.doctor_id == current_user.id)
+
+    consults = consults_query.all()
 
     results = []
     for c in consults:
@@ -71,6 +75,9 @@ def list_appointments(
         models.Appointment.appointment_date >= start_dt,
         models.Appointment.appointment_date <= end_dt
     )
+
+    if current_user.role == "Doctor":
+        query = query.filter(models.Appointment.doctor_id == current_user.id)
 
     if status and status != "all":
         query = query.filter(models.Appointment.status == status)
@@ -115,6 +122,9 @@ def get_appointment(
     if not a:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
+    if current_user.role == "Doctor" and a.doctor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied: Patient is assigned to another doctor")
+
     p = db.query(models.Patient).filter(models.Patient.id == a.patient_id).first()
     doc = db.query(models.Staff).filter(models.Staff.id == a.doctor_id).first()
     dept = db.query(models.Department).filter(models.Department.id == a.department_id).first()

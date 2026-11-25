@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  UserCheck, 
-  UserPlus, 
-  Ticket, 
-  Printer, 
-  ArrowRight, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Stethoscope, 
+import {
+  Search,
+  UserCheck,
+  UserPlus,
+  Ticket,
+  Printer,
+  ArrowRight,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldCheck,
+  Stethoscope,
   RotateCcw,
   Sparkles,
   User,
@@ -56,8 +56,9 @@ export default function PatientRegisterPage() {
     known_allergies: '',
   });
 
-  // Duplicate warning for new registration
+  // Duplicate warning & linked phone records
   const [phoneWarning, setPhoneWarning] = useState<string | null>(null);
+  const [linkedPhonePatients, setLinkedPhonePatients] = useState<Patient[]>([]);
 
   // Doctors & Departments (Step 4: Select Doctor)
   const [doctors, setDoctors] = useState<Staff[]>([]);
@@ -86,12 +87,12 @@ export default function PatientRegisterPage() {
         setSelectedDoctor(list[0]);
         if (list[0].department_id) setSelectedDeptId(list[0].department_id);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     mastersApi.departments().then((res) => {
       const list: Department[] = Array.isArray(res) ? res : (res?.data || []);
       setDepartments(list);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   // Sync selected doctor object when doctor ID changes
@@ -195,23 +196,67 @@ export default function PatientRegisterPage() {
     setPurpose('');
   };
 
-  // Form input change
+  // Form input change with automatic Age calculation from Date of Birth
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'date_of_birth') {
+      let calculatedAge = formData.age_years;
+      if (value) {
+        const birthDate = new Date(value);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        if (age >= 0 && age <= 130) {
+          calculatedAge = String(age);
+        }
+      }
+      setFormData((prev) => ({
+        ...prev,
+        date_of_birth: value,
+        age_years: calculatedAge,
+      }));
+      return;
+    }
+
+    if (name === 'phone') {
+      const cleaned = value.replace(/[^\d+-\s]/g, '');
+      setFormData((prev) => ({ ...prev, phone: cleaned }));
+      // Check linked phone records if >= 10 digits
+      if (cleaned.replace(/\D/g, '').length >= 10) {
+        patientsApi.search(cleaned.trim()).then((res) => {
+          const list = Array.isArray(res) ? res : (res?.data || []);
+          setLinkedPhonePatients(list);
+          if (list.length > 0 && !selectedPatient) {
+            setPhoneWarning(`Found ${list.length} registered file${list.length > 1 ? 's' : ''} connected to this phone number.`);
+          } else {
+            setPhoneWarning(null);
+          }
+        }).catch(() => { });
+      } else {
+        setLinkedPhonePatients([]);
+        setPhoneWarning(null);
+      }
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // Check duplicate phone on blur for new patient
   const handlePhoneBlur = async () => {
-    if (selectedPatient) return; // already existing
     const phone = formData.phone.trim();
     if (phone.length >= 10) {
       try {
         const res = await patientsApi.search(phone);
         const list = Array.isArray(res) ? res : (res?.data || []);
-        if (list.length > 0) {
+        setLinkedPhonePatients(list);
+        if (list.length > 0 && !selectedPatient) {
           const match = list[0];
-          setPhoneWarning(`⚠️ Mobile already registered for OP #${match.op_no}: ${match.first_name} ${match.last_name || ''}`);
+          setPhoneWarning(`⚠️ Mobile connected to OP #${match.op_no} (${match.first_name} ${match.last_name || ''}). Select linked file below or continue creating a new family file.`);
         } else {
           setPhoneWarning(null);
         }
@@ -297,7 +342,7 @@ export default function PatientRegisterPage() {
         patient_name: patientName,
         phone: formData.phone,
         doctor_name: selectedDoctor?.full_name?.startsWith('Dr.')
-          ? selectedDoctor?.full_name 
+          ? selectedDoctor?.full_name
           : `Dr. ${selectedDoctor?.full_name || 'Consulting Doctor'}`,
         department_name: departments.find((d) => d.id === selectedDeptId)?.name || selectedDoctor?.department_name || 'Aesthetic Dermatology',
         visit_type: visitType,
@@ -321,7 +366,7 @@ export default function PatientRegisterPage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-3 sm:p-5 md:p-6 2xl:p-8 max-w-5xl 2xl:max-w-[1500px] 3xl:max-w-[1800px] mx-auto space-y-6 w-full">
       {/* Title */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -544,26 +589,24 @@ export default function PatientRegisterPage() {
         /* STEP 2, 3, 4, 5: REGISTRATION / VISIT FORM */
         <form onSubmit={handleReviewConfirm} className="space-y-6">
           {/* Status Banner */}
-          <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-            selectedPatient 
-              ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' 
-              : 'bg-violet-50/80 border-violet-200 text-violet-950'
-          }`}>
+          <div className={`p-4 rounded-2xl border flex items-center justify-between ${selectedPatient
+            ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+            : 'bg-violet-50/80 border-violet-200 text-violet-950'
+            }`}>
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${
-                selectedPatient ? 'bg-emerald-600 text-white' : 'bg-violet-600 text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold ${selectedPatient ? 'bg-emerald-600 text-white' : 'bg-violet-600 text-white'
+                }`}>
                 {selectedPatient ? <UserCheck className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
               </div>
               <div>
                 <p className="font-bold text-sm">
-                  {selectedPatient 
-                    ? `Existing Patient Profile: OP #${selectedPatient.op_no} — ${selectedPatient.first_name} ${selectedPatient.last_name || ''}` 
+                  {selectedPatient
+                    ? `Existing Patient Profile: OP #${selectedPatient.op_no} — ${selectedPatient.first_name} ${selectedPatient.last_name || ''}`
                     : 'New Patient Registration Form'}
                 </p>
                 <p className="text-xs opacity-80">
-                  {selectedPatient 
-                    ? 'Rule 1 Enforced: Edits to patient fields below will immediately update the Patient Master Record upon confirmation.' 
+                  {selectedPatient
+                    ? 'Rule 1 Enforced: Edits to patient fields below will immediately update the Patient Master Record upon confirmation.'
                     : 'Fill details below to generate a new permanent OP file and assign consultation token.'}
                 </p>
               </div>
@@ -624,6 +667,31 @@ export default function PatientRegisterPage() {
                   />
                 </div>
 
+                {linkedPhonePatients.length > 0 && !selectedPatient && (
+                  <div className="col-span-full bg-amber-50/80 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1.5 animate-in fade-in">
+                    <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <Phone className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{linkedPhonePatients.length} Patient Record{linkedPhonePatients.length > 1 ? 's' : ''} Connected with this Phone Number:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      {linkedPhonePatients.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleSelectExistingPatient(p)}
+                          className="bg-white hover:bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg text-xs font-semibold text-amber-900 flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                        >
+                          <UserCheck className="w-3 h-3 text-emerald-600" />
+                          <span>#{p.op_no}: {p.first_name} {p.last_name || ''} ({p.gender}, {p.age_years ? `${p.age_years} yrs` : 'Age -'})</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10.5px] text-amber-700">
+                      💡 Click an existing profile above to check in for follow-up/repeat visit, or continue typing below to register a new family member under this phone.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Alternate Phone</label>
                   <input
@@ -663,7 +731,10 @@ export default function PatientRegisterPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Date of Birth</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-700">Date of Birth</label>
+                    <span className="text-[10px] text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.2 rounded">Optional</span>
+                  </div>
                   <input
                     type="date"
                     name="date_of_birth"
@@ -671,10 +742,14 @@ export default function PatientRegisterPage() {
                     onChange={handleChange}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
                   />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Selecting DOB auto-calculates age</span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Age (Years)</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-700">Age (Years)</label>
+                    {formData.date_of_birth && <span className="text-[10px] text-violet-600 font-bold">Auto-calculated</span>}
+                  </div>
                   <input
                     type="number"
                     name="age_years"
@@ -685,6 +760,7 @@ export default function PatientRegisterPage() {
                     onChange={handleChange}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
                   />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Can enter age directly without DOB</span>
                 </div>
 
                 <div>
@@ -942,13 +1018,13 @@ export default function PatientRegisterPage() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-slate-900 text-white rounded-2xl shadow-md">
             <div>
               <p className="font-bold text-sm">
-                {selectedPatient 
-                  ? 'Confirm Visit & Sync Patient Master Profile' 
+                {selectedPatient
+                  ? 'Confirm Visit & Sync Patient Master Profile'
                   : 'Register New Patient & Issue Consultation Token'}
               </p>
               <p className="text-xs text-slate-400 mt-0.5">
-                {selectedPatient 
-                  ? 'Saves modified demographic details to master records and queues token for doctor.' 
+                {selectedPatient
+                  ? 'Saves modified demographic details to master records and queues token for doctor.'
                   : 'Assigns unique permanent OP number and puts token into the active queue.'}
               </p>
             </div>
@@ -968,10 +1044,10 @@ export default function PatientRegisterPage() {
                 className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition"
               >
                 <Ticket className="w-4 h-4" />
-                {loading 
-                  ? 'Processing Registration...' 
-                  : selectedPatient 
-                    ? 'Review / Edit / Confirm Visit' 
+                {loading
+                  ? 'Processing Registration...'
+                  : selectedPatient
+                    ? 'Review / Edit / Confirm Visit'
                     : 'Create Visit Registration & Issue Token'}
                 <ArrowRight className="w-4 h-4" />
               </button>
