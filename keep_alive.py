@@ -3,7 +3,7 @@ import urllib.request
 import json
 from datetime import datetime
 
-URL = "https://healh-software.onrender.com/health"
+URL = "https://healh-software-ru1r.onrender.com/health"
 INTERVAL_SECONDS = 120  # 2 minutes
 
 def ping():

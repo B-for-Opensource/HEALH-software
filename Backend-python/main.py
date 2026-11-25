@@ -118,9 +118,16 @@ def root():
 
 @app.get("/health")
 @app.get("/api/health")
-def health_check():
+@app.get("/cron")
+@app.get("/api/cron")
+@app.get("/api/cron/keep-alive")
+@app.get("/ping")
+def health_and_cron_check():
     return {
-        "status": "healthy",
+        "status": 200,
+        "health": "okay",
+        "running": True,
+        "message": "HEAL Clinic backend is healthy and running",
         "service": "HEAL Clinic Management API",
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
