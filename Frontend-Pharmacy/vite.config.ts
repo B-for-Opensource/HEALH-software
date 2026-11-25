@@ -15,7 +15,7 @@ export default defineConfig({
     port: 3002,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'https://healh-software-ru1r.onrender.com',
         changeOrigin: true,
       },
     },
