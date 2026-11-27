@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEALESTHETIC — Clinic Manager & Doctor Operating Guide</title>
+  
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --heal-bronze: #965f36;
+      --heal-bronze-dark: #7a4a27;
+      --heal-terracotta: #9b5229;
+      --heal-cream: #faf7f2;
+      --heal-dark: #241c18;
+      --heal-emerald: #059669;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: #f8fafc;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    h1, h2, h3, .brand-serif {
+      font-family: var(--font-serif);
+    }
+
+    .navbar-brand-title {
+      font-family: var(--font-serif);
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--heal-dark) !important;
+      font-size: 1.35rem;
+    }
+
+    .hero-section {
+      background: linear-gradient(135deg, #241c18 0%, #3e2e26 50%, #965f36 100%);
+      color: #ffffff;
+      padding: 4.5rem 0 3.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-badge {
+      background: rgba(250, 174, 90, 0.15);
+      border: 1px solid rgba(250, 174, 90, 0.4);
+      color: #faae5a;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.35rem 0.9rem;
+      border-radius: 50rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .pipeline-nav-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 1rem;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      text-decoration: none !important;
+      color: inherit;
+      display: block;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .pipeline-nav-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+      border-color: var(--heal-bronze);
+    }
+    .pipeline-step-num {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+
+    .station-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1.25rem;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      transition: box-shadow 0.2s ease;
+    }
+    .station-card:hover {
+      box-shadow: 0 12px 24px -2px rgba(0, 0, 0, 0.08);
+    }
+    .station-header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid #f1f5f9;
+      background: #ffffff;
+    }
+
+    .station-badge-step {
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.25rem 0.75rem;
+      border-radius: 50rem;
+    }
+
+    .browser-mockup {
+      border-radius: 0.85rem;
+      border: 1px solid #cbd5e1;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      background: #1e293b;
+    }
+    .browser-header {
+      background: #f1f5f9;
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .browser-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .browser-url-bar {
+      background: #ffffff;
+      border-radius: 0.35rem;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.8rem;
+      font-family: monospace;
+      color: #64748b;
+      margin-left: 0.5rem;
+      flex-grow: 1;
+      border: 1px solid #e2e8f0;
+    }
+    .browser-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #ffffff;
+      cursor: zoom-in;
+      transition: transform 0.2s ease;
+    }
+    .browser-img:hover {
+      opacity: 0.98;
+    }
+
+    .info-pill {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .info-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #64748b;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .info-value {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.95rem;
+    }
+
+    .checklist-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+    }
+
+    .live-app-card {
+      border-radius: 1rem;
+      border: 1px solid #e2e8f0;
+      padding: 1.25rem;
+      background: #ffffff;
+      transition: all 0.2s ease;
+      height: 100%;
+    }
+    .live-app-card:hover {
+      border-color: var(--heal-bronze);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff; }
+      .station-card { break-inside: avoid; border: 1px solid #cbd5e1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAVBAR -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top py-2.5 no-print">
+    <div class="container-fluid px-lg-5">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+        <span class="p-2 rounded-3 bg-dark text-warning d-flex align-items-center justify-content-center">
+          <i class="bi bi-heart-pulse-fill fs-5"></i>
+        </span>
+        <div>
+          <span class="navbar-brand-title d-block leading-none">HEALESTHETIC</span>
+          <small class="text-muted d-block" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;">CLINIC & ADVANCED AESTHETIC CARE</small>
+        </div>
+      </a>
+
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4 gap-lg-1">
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#pipeline-overview">Patient Pipeline</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-1">1. Reception</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-2">2. Nurse Triage</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-3">3. Doctor Room</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-5">4. Diagnostics</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-7">5. Pharmacy</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-8">6. Results Review</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-9">7. Billing</a></li>
+          <li class="nav-item"><a class="nav-link fw-semibold px-2" href="#step-10">8. Patient App</a></li>
+        </ul>
+
+        <div class="d-flex align-items-center gap-2">
+          <a href="#live-system-apps" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Live Portals
+          </a>
+          <button onclick="window.print()" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold">
+            <i class="bi bi-printer me-1"></i> Print Manual
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <header class="hero-section text-center text-lg-start">
+    <div class="container-fluid px-lg-5">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+          <div class="hero-badge mb-3">
+            <i class="bi bi-stars"></i> CLINIC MANAGER & DOCTOR OPERATING MANUAL
+          </div>
+          <h1 class="display-5 fw-bold mb-3" style="line-height: 1.15;">
+            How To Use &amp; Run <br>The HEALESTHETIC Clinical OS
+          </h1>
+          <p class="lead opacity-75 mb-4" style="max-width: 700px; font-size: 1.05rem;">
+            A complete, step-by-step visual walkthrough of patient movement through your clinic: from reception registration and nurse triage, to doctor orders, diagnostic lab/imaging, pharmacy FEFO dispensing, returned results review, and cashier billing.
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="#step-1" class="btn btn-light rounded-pill px-4 py-2 fw-bold text-dark">
+              Start at Reception Desk <i class="bi bi-arrow-down ms-1"></i>
+            </a>
+            <a href="#manager-checklist" class="btn btn-outline-light rounded-pill px-4 py-2 fw-semibold">
+              <i class="bi bi-check2-circle me-1"></i> Manager's Daily Checklist
+            </a>
+          </div>
+        </div>
+        <div class="col-lg-4 text-center">
+          <div class="p-4 rounded-4" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(10px);">
+            <i class="bi bi-shield-check text-warning fs-1 mb-2"></i>
+            <h5 class="fw-bold mb-1 text-white">Closed-Loop Patient Flow</h5>
+            <p class="small text-white-50 mb-3">Zero duplicate OP numbers. Instant vitals handoff. Live diagnostic return loop.</p>
+            <div class="d-flex justify-content-center gap-3 text-start small">
+              <div>
+                <span class="d-block fw-bold text-warning fs-5">4</span>
+                <span class="text-white-50">Web Portals</span>
+              </div>
+              <div class="border-start border-white-50 ps-3">
+                <span class="d-block fw-bold text-warning fs-5">0%</span>
+                <span class="text-white-50">Lost Charges</span>
+              </div>
+              <div class="border-start border-white-50 ps-3">
+                <span class="d-block fw-bold text-warning fs-5">100%</span>
+                <span class="text-white-50">FEFO Expiry Safe</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PIPELINE OVERVIEW CARDS -->
+  <section class="py-4 bg-white border-bottom" id="pipeline-overview">
+    <div class="container-fluid px-lg-5">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h6 class="text-uppercase fw-bold text-muted mb-0" style="font-size: 0.75rem; letter-spacing: 0.08em;">Quick Navigation</h6>
+          <h4 class="fw-bold text-dark mb-0">8-Stage Clinical Pipeline</h4>
+        </div>
+        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-2 fw-semibold">Click any stage to jump</span>
+      </div>
+
+      <div class="row row-cols-2 row-cols-md-4 row-cols-xl-8 g-2">
+        <div class="col">
+          <a href="#step-1" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-primary-subtle text-primary mx-auto mb-2">1</div>
+            <div class="fw-bold small text-dark">Reception</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Fast-Track Intake</div>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#step-2" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-success-subtle text-success mx-auto mb-2">2</div>
+            <div class="fw-bold small text-dark">Nurse Triage</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Vitals &amp; BMI</div>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#step-3" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-danger-subtle text-danger mx-auto mb-2">3</div>
+            <div class="fw-bold small text-dark">Doctor Room</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Consultation</div>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#step-4" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-warning-subtle text-warning-emphasis mx-auto mb-2">4</div>
+            <div class="fw-bold small text-dark">Multi-Orders</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Rx, Lab, Imaging</div>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#step-5" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-info-subtle text-info mx-auto mb-2">5</div>
+            <div class="fw-bold small text-dark">Diagnostics</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Blood &amp; Scans</div>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#step-7" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-success-subtle text-success mx-auto mb-2">6</div>
+            <div class="fw-bold small text-dark">Pharmacy</div>
+            <div class="text-muted" style="font-size: 0.7rem;">FEFO Dispensing</div>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#step-8" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-primary-subtle text-primary mx-auto mb-2">7</div>
+            <div class="fw-bold small text-dark">Results Return</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Doctor Review</div>
+          </a>
+        </div>
+        <div class="col">
+          <a href="#step-9" class="pipeline-nav-card text-center">
+            <div class="pipeline-step-num bg-dark-subtle text-dark mx-auto mb-2">8</div>
+            <div class="fw-bold small text-dark">Billing POS</div>
+            <div class="text-muted" style="font-size: 0.7rem;">Payment &amp; GST</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN WALKTHROUGH CONTENT -->
+  <main class="container-fluid px-lg-5 py-5">
+
+    <!-- ================= STAGE 1: RECEPTION ================= -->
+    <section class="station-card" id="step-1">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-primary text-white">Stage 01</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Reception Desk — Patient Arrival &amp; Fast-Track Intake</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-person-badge me-1"></i> Operator: Front Desk Receptionist
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-5">
+            <div class="info-pill">
+              <span class="info-label">Where to go in software</span>
+              <span class="info-value">Core App &rarr; Menu &rarr; "Patient Registration"</span>
+            </div>
+
+            <h5 class="fw-bold text-dark mt-3 mb-2">What the Receptionist Does:</h5>
+            <ol class="small text-secondary ps-3 mb-3 space-y-1">
+              <li class="mb-1">Selects <strong>Primary Details Intake (Reception &rarr; Nurse Queue)</strong>.</li>
+              <li class="mb-1">Enters <strong>Full Name</strong> (e.g. <em>Fathima Zahra</em>).</li>
+              <li class="mb-1">Picks <strong>Date of Birth</strong> &mdash; <em>the software automatically calculates and shows their exact age in years!</em></li>
+              <li class="mb-1">Enters optional Phone Number and selects the <strong>Consulting Doctor</strong>.</li>
+              <li>Clicks the green <strong>"Register Patient &amp; Send to Nurse Queue"</strong> button.</li>
+            </ol>
+
+            <div class="checklist-box mt-3">
+              <span class="d-flex align-items-center gap-1.5 fw-bold text-success mb-1 small">
+                <i class="bi bi-check-circle-fill"></i> What to Check Next:
+              </span>
+              <p class="small text-success-emphasis mb-0">
+                A permanent <strong>OP Number (e.g. A00373)</strong> is generated. An active Encounter is started, and the patient immediately appears on the Nurse Station screen.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-lg-7">
+            <div class="browser-mockup">
+              <div class="browser-header">
+                <span class="browser-dot bg-danger"></span>
+                <span class="browser-dot bg-warning"></span>
+                <span class="browser-dot bg-success"></span>
+                <span class="browser-url-bar">https://healh-software.netlify.app/reception/register</span>
+              </div>
+              <img src="screenshots/01_reception_register.png" alt="Reception Patient Registration" class="browser-img">
+            </div>
+            <div class="text-center mt-2 small text-muted">
+              <i class="bi bi-camera me-1"></i> Live Screenshot: Fast-Track Registration with auto-age calculation and Nurse Queue routing.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 2: NURSE STATION ================= -->
+    <section class="station-card" id="step-2">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-success text-white">Stage 02</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Nurse Station — Pre-Doctor Clinical Intake &amp; Vitals</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-heart-pulse me-1"></i> Operator: Staff Nurse
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-5">
+            <div class="info-pill">
+              <span class="info-label">Where to go in software</span>
+              <span class="info-value">Core App &rarr; Menu &rarr; "Nurse Station" or "Appointments Queue"</span>
+            </div>
+
+            <h5 class="fw-bold text-dark mt-3 mb-2">What the Nurse Does:</h5>
+            <ol class="small text-secondary ps-3 mb-3">
+              <li class="mb-1">Nurse calls patient to the triage desk from the <strong>"Arrived &mdash; Awaiting Vitals"</strong> list.</li>
+              <li class="mb-1">Measures and logs vital signs:
+                <ul class="my-1">
+                  <li><strong>Blood Pressure:</strong> Systolic / Diastolic (e.g. 118/76 mmHg)</li>
+                  <li><strong>Pulse &amp; SpO2:</strong> Heart rate and Oxygen level</li>
+                  <li><strong>Height &amp; Weight:</strong> System automatically calculates <strong>BMI</strong> (Body Mass Index)</li>
+                  <li><strong>Blood Group:</strong> O+, A+, B+, AB+</li>
+                  <li><strong>Known Drug Allergies:</strong> e.g. Penicillin or None</li>
+                </ul>
+              </li>
+              <li>Nurse clicks <strong>"Submit Vitals &amp; Send to Doctor"</strong>.</li>
+            </ol>
+
+            <div class="checklist-box mt-3">
+              <span class="d-flex align-items-center gap-1.5 fw-bold text-success mb-1 small">
+                <i class="bi bi-check-circle-fill"></i> What to Check Next:
+              </span>
+              <p class="small text-success-emphasis mb-0">
+                Patient status turns to <strong>"Ready for Doctor"</strong>. The patient is sent to sit outside Doctor Consultation Room.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-lg-7">
+            <div class="browser-mockup">
+              <div class="browser-header">
+                <span class="browser-dot bg-danger"></span>
+                <span class="browser-dot bg-warning"></span>
+                <span class="browser-dot bg-success"></span>
+                <span class="browser-url-bar">https://healh-software.netlify.app/reception/queue</span>
+              </div>
+              <img src="screenshots/02_nurse_triage.png" alt="Nurse Station Queue & Vitals" class="browser-img">
+            </div>
+            <div class="text-center mt-2 small text-muted">
+              <i class="bi bi-camera me-1"></i> Live Screenshot: Nurse queue showing arrived patients awaiting vitals intake.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 3: DOCTOR ROOM ================= -->
+    <section class="station-card" id="step-3">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-danger text-white">Stage 03</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Doctor Consultation Room — Clinical Examination &amp; Notes</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-stethoscope me-1"></i> Operator: Consulting Doctor
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-5">
+            <div class="info-pill">
+              <span class="info-label">Where to go in software</span>
+              <span class="info-value">Core App &rarr; Menu &rarr; "Doctor Workbench"</span>
+            </div>
+
+            <h5 class="fw-bold text-dark mt-3 mb-2">What the Doctor Sees &amp; Does:</h5>
+            <ol class="small text-secondary ps-3 mb-3">
+              <li class="mb-1">Doctor clicks on patient in the left <strong>"Consultation Queue"</strong>.</li>
+              <li class="mb-1"><strong>Green Verified Vitals Banner:</strong> Shows BP, BMI, Blood Group, and Nurse Name at the very top of the chart.</li>
+              <li class="mb-1">Doctor writes:
+                <ul class="my-1">
+                  <li><strong>Chief Complaints:</strong> e.g. <em>"Acne on cheeks and jawline for 3 weeks"</em></li>
+                  <li><strong>Clinical Findings &amp; Examination</strong></li>
+                  <li><strong>Provisional / Final Diagnosis:</strong> e.g. <em>"Grade III Inflammatory Acne"</em></li>
+                </ul>
+              </li>
+              <li><strong>Aesthetic Charting:</strong> For skin/hair sessions, doctor drops interactive pins on the 2D anatomical face canvas.</li>
+            </ol>
+
+            <div class="checklist-box mt-3">
+              <span class="d-flex align-items-center gap-1.5 fw-bold text-success mb-1 small">
+                <i class="bi bi-check-circle-fill"></i> What to Check Next:
+              </span>
+              <p class="small text-success-emphasis mb-0">
+                Doctor proceeds to the bottom order tabs to prescribe medicines or order diagnostics (Stage 4).
+              </p>
+            </div>
+          </div>
+
+          <div class="col-lg-7">
+            <div class="browser-mockup">
+              <div class="browser-header">
+                <span class="browser-dot bg-danger"></span>
+                <span class="browser-dot bg-warning"></span>
+                <span class="browser-dot bg-success"></span>
+                <span class="browser-url-bar">https://healh-software.netlify.app/clinical/doctor</span>
+              </div>
+              <img src="screenshots/03_doctor_workbench_consultation.png" alt="Doctor Workbench Consultation" class="browser-img">
+            </div>
+            <div class="text-center mt-2 small text-muted">
+              <i class="bi bi-camera me-1"></i> Live Screenshot: Doctor Workbench showing consultation queue, green vitals banner, and clinical inputs.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 4: MULTI-ORDERS ================= -->
+    <section class="station-card" id="step-4">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-warning text-dark">Stage 04</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Multi-Department Orders — Simultaneous Pharmacy, Lab &amp; Scans</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-send me-1"></i> Operator: Consulting Doctor
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4">
+          <div class="col-lg-3">
+            <div class="p-3 bg-light rounded-3 border h-100">
+              <div class="text-primary fw-bold mb-1"><i class="bi bi-capsule me-1"></i> 1. Pharmacy Order (Rx)</div>
+              <p class="small text-muted mb-0">Type medicine name, select frequency (1-0-1), duration in days, and food instructions. Routes directly to Pharmacy Dispensary.</p>
+            </div>
+          </div>
+          <div class="col-lg-3">
+            <div class="p-3 bg-light rounded-3 border h-100">
+              <div class="text-danger fw-bold mb-1"><i class="bi bi-droplet-half me-1"></i> 2. Laboratory Blood Tests</div>
+              <p class="small text-muted mb-0">Tick blood tests: Complete Blood Count (CBC), Liver Function Test (LFT), Lipid, HbA1c. Routes directly to Diagnostic Lab.</p>
+            </div>
+          </div>
+          <div class="col-lg-3">
+            <div class="p-3 bg-light rounded-3 border h-100">
+              <div class="text-info fw-bold mb-1"><i class="bi bi-aspect-ratio me-1"></i> 3. Radiology Scans</div>
+              <p class="small text-muted mb-0">Select scan modality: Chest X-Ray, Ultrasound Abdomen, Brain MRI. Routes directly to Imaging &amp; Radiology.</p>
+            </div>
+          </div>
+          <div class="col-lg-3">
+            <div class="p-3 bg-light rounded-3 border h-100">
+              <div class="text-success fw-bold mb-1"><i class="bi bi-bandaid me-1"></i> 4. Nursing Procedures</div>
+              <p class="small text-muted mb-0">Order in-clinic treatments: Chemical Peel, Laser session, IV Drip, or Intralesional Injection. Routes to Procedure Lounge.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between p-3 mt-4 rounded-3 border bg-light-subtle">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-printer-fill fs-4 text-dark"></i>
+            <div>
+              <strong class="d-block text-dark">Printed Prescription Header</strong>
+              <small class="text-muted">Outputs exact branding: <strong>HEALESTHETIC CLINIC &amp; ADVANCED AESTHETIC CARE</strong> with Medical Reg No. and Helpline.</small>
+            </div>
+          </div>
+          <span class="badge bg-dark px-3 py-2">Branded Letterhead Active</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 5: DIAGNOSTICS EXECUTION ================= -->
+    <section class="station-card" id="step-5">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-info text-dark">Stage 05</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Diagnostics Execution — Pathology Lab &amp; Radiology Suites</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-activity me-1"></i> Operators: Lab Tech &amp; Radiologist
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4">
+          <!-- Lab -->
+          <div class="col-lg-6">
+            <div class="border rounded-4 p-3 bg-light-subtle h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-droplet-half text-danger me-1"></i> Pathology Laboratory</h5>
+                <span class="badge bg-secondary">Menu &rarr; "Laboratory"</span>
+              </div>
+              <p class="small text-muted">Lab tech views order, draws sample, enters parameters (e.g. Hemoglobin, WBC). Pathologist verifies and clicks <strong>"Release Report"</strong>.</p>
+              
+              <div class="browser-mockup mt-2">
+                <div class="browser-header">
+                  <span class="browser-dot bg-danger"></span>
+                  <span class="browser-dot bg-warning"></span>
+                  <span class="browser-dot bg-success"></span>
+                  <span class="browser-url-bar">/clinical/lab</span>
+                </div>
+                <img src="screenshots/05_diagnostics_lab.png" alt="Laboratory Orders" class="browser-img">
+              </div>
+            </div>
+          </div>
+
+          <!-- Radiology -->
+          <div class="col-lg-6">
+            <div class="border rounded-4 p-3 bg-light-subtle h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-aspect-ratio text-info me-1"></i> Radiology &amp; Scans</h5>
+                <span class="badge bg-secondary">Menu &rarr; "Imaging &amp; Radiology"</span>
+              </div>
+              <p class="small text-muted">Radiologist conducts X-Ray/MRI/USG, logs clinical impressions, and clicks <strong>"Verify Scan Report"</strong>. Test charges auto-queue for billing.</p>
+
+              <div class="browser-mockup mt-2">
+                <div class="browser-header">
+                  <span class="browser-dot bg-danger"></span>
+                  <span class="browser-dot bg-warning"></span>
+                  <span class="browser-dot bg-success"></span>
+                  <span class="browser-url-bar">/clinical/imaging</span>
+                </div>
+                <img src="screenshots/06_radiology_imaging.png" alt="Radiology Orders" class="browser-img">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 6: PHARMACY ================= -->
+    <section class="station-card" id="step-7">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-success text-white">Stage 06</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Pharmacy Counter — Doctor Rx Queue &amp; Direct Walk-In Sales</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-prescription2 me-1"></i> Operator: Chief Pharmacist
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4">
+          <!-- Prescriptions -->
+          <div class="col-lg-6">
+            <div class="border rounded-4 p-3 bg-light-subtle h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-file-medical text-success me-1"></i> 1. Doctor Prescription Queue</h5>
+                <span class="badge bg-success">FEFO Prioritization</span>
+              </div>
+              <p class="small text-muted">Dispenses against doctor orders. Earliest expiring batch is chosen automatically. Supports partial dispensing and Schedule H1 statutory drug locking.</p>
+
+              <div class="browser-mockup mt-2">
+                <div class="browser-header">
+                  <span class="browser-dot bg-danger"></span>
+                  <span class="browser-dot bg-warning"></span>
+                  <span class="browser-dot bg-success"></span>
+                  <span class="browser-url-bar">https://healh-pharmacy.netlify.app</span>
+                </div>
+                <img src="screenshots/07_pharmacy_dispensary.png" alt="Pharmacy Dispensary" class="browser-img">
+              </div>
+            </div>
+          </div>
+
+          <!-- Walk-in -->
+          <div class="col-lg-6">
+            <div class="border rounded-4 p-3 bg-light-subtle h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-bag-plus text-primary me-1"></i> 2. Direct Walk-In OTC Sale</h5>
+                <span class="badge bg-primary">No Doctor Fee</span>
+              </div>
+              <p class="small text-muted">When customers buy sunscreen or skincare without seeing a doctor, click <strong>"+ Direct Walk-In Sale"</strong>. Bills independently without doctor charges.</p>
+
+              <div class="browser-mockup mt-2">
+                <div class="browser-header">
+                  <span class="browser-dot bg-danger"></span>
+                  <span class="browser-dot bg-warning"></span>
+                  <span class="browser-dot bg-success"></span>
+                  <span class="browser-url-bar">Direct Walk-In Modal</span>
+                </div>
+                <img src="screenshots/08_pharmacy_walkin_sale.png" alt="Pharmacy Direct Walk-In Sale" class="browser-img">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 7: RETURNED WITH RESULTS ================= -->
+    <section class="station-card" id="step-8">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-primary text-white">Stage 07</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Results Return — Doctor Reviews Reports &amp; Closes Visit</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-arrow-repeat me-1"></i> Operator: Consulting Doctor
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-5">
+            <div class="info-pill">
+              <span class="info-label">Where to go in software</span>
+              <span class="info-value">Doctor Workbench &rarr; Click "Returned with Results" tab</span>
+            </div>
+
+            <h5 class="fw-bold text-dark mt-3 mb-2">How the Closed-Loop Review Works:</h5>
+            <ol class="small text-secondary ps-3 mb-3">
+              <li class="mb-1">Doctor does <strong>not</strong> need to search for the patient again.</li>
+              <li class="mb-1">As soon as the lab or radiologist clicks "Release", the patient pops up in the <strong>"Returned with Results"</strong> tab with a live badge.</li>
+              <li class="mb-1">Doctor clicks patient to review verified blood test values and radiologist scan notes side-by-side.</li>
+              <li class="mb-1">Doctor writes final advice, adjusts medication if necessary, and tells patient next steps.</li>
+              <li>Doctor clicks <strong>"Complete Consultation &amp; Close Visit"</strong>.</li>
+            </ol>
+
+            <div class="checklist-box mt-3">
+              <span class="d-flex align-items-center gap-1.5 fw-bold text-success mb-1 small">
+                <i class="bi bi-check-circle-fill"></i> What to Check Next:
+              </span>
+              <p class="small text-success-emphasis mb-0">
+                Patient is sent to the Cashier for payment collection.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-lg-7">
+            <div class="browser-mockup">
+              <div class="browser-header">
+                <span class="browser-dot bg-danger"></span>
+                <span class="browser-dot bg-warning"></span>
+                <span class="browser-dot bg-success"></span>
+                <span class="browser-url-bar">https://healh-software.netlify.app/clinical/doctor</span>
+              </div>
+              <img src="screenshots/04_doctor_returned_results.png" alt="Doctor Returned with Results Queue" class="browser-img">
+            </div>
+            <div class="text-center mt-2 small text-muted">
+              <i class="bi bi-camera me-1"></i> Live Screenshot: Doctor workbench dual tab showing patients returned with completed lab &amp; scan reports.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 8: BILLING POS ================= -->
+    <section class="station-card" id="step-9">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-dark text-white">Stage 08</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Central Billing Desk — Automated Charge Aggregation &amp; GST POS</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-receipt me-1"></i> Operator: Billing Cashier
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4 align-items-center">
+          <div class="col-lg-5">
+            <div class="info-pill">
+              <span class="info-label">Where to go in software</span>
+              <span class="info-value">Core App &rarr; Menu &rarr; "Billing &amp; Cashier"</span>
+            </div>
+
+            <h5 class="fw-bold text-dark mt-3 mb-2">Zero Missed Charges:</h5>
+            <ol class="small text-secondary ps-3 mb-3">
+              <li class="mb-1">Cashier selects the patient name or OP Number.</li>
+              <li class="mb-1"><strong>Auto-Pulled Pending Charges:</strong> The system automatically aggregates every completed service:
+                <ul class="my-1">
+                  <li>Doctor Consultation Fee</li>
+                  <li>Laboratory Blood Tests (CBC, LFT)</li>
+                  <li>Radiology Scans (X-Ray, MRI)</li>
+                  <li>Daycare Nursing Procedures</li>
+                </ul>
+              </li>
+              <li class="mb-1">Cashier selects payment method: <strong>Cash</strong>, <strong>Card (POS)</strong>, or <strong>UPI (GPay / PhonePe)</strong>.</li>
+              <li>Clicks <strong>"Collect Payment &amp; Print GST Invoice"</strong>.</li>
+            </ol>
+
+            <div class="checklist-box mt-3">
+              <span class="d-flex align-items-center gap-1.5 fw-bold text-success mb-1 small">
+                <i class="bi bi-check-circle-fill"></i> What to Check Next:
+              </span>
+              <p class="small text-success-emphasis mb-0">
+                Patient receives printed GST invoice. Patient balance becomes ₹0.00.
+              </p>
+            </div>
+          </div>
+
+          <div class="col-lg-7">
+            <div class="browser-mockup">
+              <div class="browser-header">
+                <span class="browser-dot bg-danger"></span>
+                <span class="browser-dot bg-warning"></span>
+                <span class="browser-dot bg-success"></span>
+                <span class="browser-url-bar">https://healh-software.netlify.app/billing/pos</span>
+              </div>
+              <img src="screenshots/09_billing_pos.png" alt="Billing POS & Cashier" class="browser-img">
+            </div>
+            <div class="text-center mt-2 small text-muted">
+              <i class="bi bi-camera me-1"></i> Live Screenshot: Central billing POS with automatic service charges pull and GST calculation.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STAGE 9: PATIENT PORTAL & HRMS ================= -->
+    <section class="station-card" id="step-10">
+      <div class="station-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="station-badge-step bg-info text-white">Stage 09</span>
+          <h3 class="h4 fw-bold mb-0 text-dark">Patient Smartphone Access &amp; Management HRMS</h3>
+        </div>
+        <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">
+          <i class="bi bi-phone me-1"></i> Mobile Self-Service &amp; Workforce
+        </span>
+      </div>
+
+      <div class="p-4 p-lg-5">
+        <div class="row g-4">
+          <!-- Patient Portal -->
+          <div class="col-lg-6">
+            <div class="border rounded-4 p-3 bg-light-subtle h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-phone text-danger me-1"></i> Patient Web Portal</h5>
+                <span class="badge bg-danger">OTP Mobile Login</span>
+              </div>
+              <p class="small text-muted">Patient enters registered phone number and 6-digit OTP to view prescriptions, visit timeline, and download official verified lab/X-ray test reports.</p>
+
+              <div class="browser-mockup mt-2">
+                <div class="browser-header">
+                  <span class="browser-dot bg-danger"></span>
+                  <span class="browser-dot bg-warning"></span>
+                  <span class="browser-dot bg-success"></span>
+                  <span class="browser-url-bar">https://healh-patient.netlify.app</span>
+                </div>
+                <img src="screenshots/10_patient_portal_login.png" alt="Patient Portal" class="browser-img">
+              </div>
+            </div>
+          </div>
+
+          <!-- HRMS -->
+          <div class="col-lg-6">
+            <div class="border rounded-4 p-3 bg-light-subtle h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-calendar-check text-primary me-1"></i> HRMS &amp; Doctor Rostering</h5>
+                <span class="badge bg-primary">Workforce &amp; Payouts</span>
+              </div>
+              <p class="small text-muted">Clinic Manager views doctor shift schedules, monthly attendance, and aesthetic procedure doctor commission ledger and payout approvals.</p>
+
+              <div class="browser-mockup mt-2">
+                <div class="browser-header">
+                  <span class="browser-dot bg-danger"></span>
+                  <span class="browser-dot bg-warning"></span>
+                  <span class="browser-dot bg-success"></span>
+                  <span class="browser-url-bar">https://healh-hrms.netlify.app/hrms</span>
+                </div>
+                <img src="screenshots/11_hrms_rosters.png" alt="HRMS Rosters" class="browser-img">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= MANAGER'S CHECKLIST ================= -->
+    <section class="station-card" id="manager-checklist">
+      <div class="station-header">
+        <h4 class="fw-bold mb-0 text-dark"><i class="bi bi-clipboard-check text-success me-2"></i> Clinic Manager's Daily Operation Checklist</h4>
+      </div>
+      <div class="p-4 p-lg-5">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle border">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 25%;">Question / Objective</th>
+                <th style="width: 25%;">Where to Check (Menu)</th>
+                <th style="width: 30%;">What to Look For</th>
+                <th style="width: 20%;">Action if Issue Found</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fw-bold">How many patients came today?</td>
+                <td><span class="badge bg-light text-dark border">Reception &rarr; Queue</span></td>
+                <td>Total token numbers issued and status counts</td>
+                <td class="small text-muted">Ensure all waiting patients have an assigned doctor</td>
+              </tr>
+              <tr>
+                <td class="fw-bold">Are nurses recording vitals before doctor?</td>
+                <td><span class="badge bg-light text-dark border">Doctor Workbench</span></td>
+                <td>Green banner showing BP, BMI, and Nurse Name</td>
+                <td class="small text-muted">Remind reception to send patient to nurse first</td>
+              </tr>
+              <tr>
+                <td class="fw-bold">Any patients waiting for test results?</td>
+                <td><span class="badge bg-primary text-white">Returned with Results Tab</span></td>
+                <td>Badge count showing verified lab/scan reports</td>
+                <td class="small text-muted">Doctor calls patient in to finalize consultation</td>
+              </tr>
+              <tr>
+                <td class="fw-bold">Are any medicines expiring soon?</td>
+                <td><span class="badge bg-warning text-dark">Pharmacy OS &rarr; Batches</span></td>
+                <td>Amber warning tags for batches &lt; 30 days</td>
+                <td class="small text-muted">Generate Debit Note to return stock to distributor</td>
+              </tr>
+              <tr>
+                <td class="fw-bold">Total cash &amp; UPI collected today?</td>
+                <td><span class="badge bg-light text-dark border">Billing &rarr; Shift Summary</span></td>
+                <td>Cash vs Card vs UPI collection breakdown</td>
+                <td class="small text-muted">Reconcile cash drawer and close shift register</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= LIVE SYSTEM APPS ================= -->
+    <section class="my-5" id="live-system-apps">
+      <div class="text-center mb-4">
+        <h6 class="text-uppercase fw-bold text-muted" style="letter-spacing: 0.08em;">Live Deployment</h6>
+        <h3 class="fw-bold text-dark">Instant Access to All 4 Production Portals</h3>
+        <p class="text-muted small">Hosted globally on Netlify CDN with encrypted cloud database connection.</p>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6 col-lg-3">
+          <div class="live-app-card text-center">
+            <i class="bi bi-hospital fs-1 text-primary mb-2 d-block"></i>
+            <h5 class="fw-bold mb-1">Core Clinical OS</h5>
+            <p class="small text-muted mb-3">Reception, Nurse Triage, Doctor Room, Diagnostics &amp; Billing POS.</p>
+            <a href="https://healh-software.netlify.app" target="_blank" class="btn btn-primary btn-sm rounded-pill w-100 fw-bold">
+              Open Core App <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="live-app-card text-center">
+            <i class="bi bi-people fs-1 text-success mb-2 d-block"></i>
+            <h5 class="fw-bold mb-1">HRMS &amp; Rosters</h5>
+            <p class="small text-muted mb-3">Doctor duty schedules, attendance, and aesthetic commissions.</p>
+            <a href="https://healh-hrms.netlify.app" target="_blank" class="btn btn-success btn-sm rounded-pill w-100 fw-bold">
+              Open HRMS Suite <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="live-app-card text-center">
+            <i class="bi bi-capsule fs-1 text-warning mb-2 d-block"></i>
+            <h5 class="fw-bold mb-1">Pharmacy OS</h5>
+            <p class="small text-muted mb-3">Rx dispensing, FEFO batch stock, Schedule H1, and OTC walk-in retail.</p>
+            <a href="https://healh-pharmacy.netlify.app" target="_blank" class="btn btn-warning btn-sm rounded-pill w-100 fw-bold text-dark">
+              Open Pharmacy <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <div class="live-app-card text-center">
+            <i class="bi bi-phone fs-1 text-info mb-2 d-block"></i>
+            <h5 class="fw-bold mb-1">Patient Portal</h5>
+            <p class="small text-muted mb-3">Mobile OTP access for patients to view prescriptions and lab reports.</p>
+            <a href="https://healh-patient.netlify.app" target="_blank" class="btn btn-info btn-sm rounded-pill w-100 fw-bold text-white">
+              Open Patient Portal <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-dark text-white-50 py-4 border-top border-secondary text-center small no-print">
+    <div class="container-fluid px-lg-5">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <strong class="text-white">HEALESTHETIC Healthcare Group</strong> &middot; Operational Guide Edition 2.0
+        </div>
+        <div>
+          Calicut Flagship &bull; Beach Road &bull; Wayanad Branch
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap 5.3 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
