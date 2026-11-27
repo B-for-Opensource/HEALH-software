@@ -1,0 +1,407 @@
+================================================================================
+HEALESTHETIC HEALTHCARE OS — DOCTOR & CLINICAL TEAM OPERATING MANUAL
+Comprehensive Step-by-Step Clinical Workflow, Station Guide & System Reference
+================================================================================
+Document Version : 2.0 (Production Release)
+Clinic Group     : HEALESTHETIC Healthcare Group (Kozhikode, Beach Road, Wayanad)
+System Edition   : Multi-Tenant Aesthetic & Multi-Specialty Clinical SaaS
+Last Updated     : November 2026
+================================================================================
+
+TABLE OF CONTENTS:
+--------------------------------------------------------------------------------
+ 1. SYSTEM OVERVIEW & ARCHITECTURAL SUMMARY
+ 2. ACCESS LINKS & LOGIN CREDENTIALS DIRECTORY
+ 3. COMPLETE PATIENT CLINICAL JOURNEY (STEP-BY-STEP FLOW)
+    - Step 1: Reception Desk Intake (Fast-Track vs Full HMS Registration)
+    - Step 2: Nurse Station (Pre-Doctor Vitals, Blood Group & BMI Triage)
+    - Step 3: Doctor Workbench (Active Queue & Patient History)
+    - Step 4: Multi-Department Simultaneous Ordering (Rx, Lab, Imaging, Nursing)
+    - Step 5: Laboratory Diagnostics Execution (Draft -> Verify -> Release)
+    - Step 6: Radiology & Imaging Execution (Scan -> Findings -> Verification)
+    - Step 7: Pharmacy Counter (Rx Dispensing vs Direct Walk-In Retail Sales)
+    - Step 8: Doctor Follow-Up via "Returned with Results" Queue & Closure
+    - Step 9: Cashier & Central Billing POS (Auto-Pushed Pending Charges)
+    - Step 10: Patient Web Portal (Mobile OTP, Timeline & Report Download)
+ 4. DOCTOR WORKBENCH IN-DEPTH HOW-TO GUIDE
+ 5. AESTHETIC CLINIC PROCEDURES, PACKAGES & SESSIONS
+ 6. REGULATORY COMPLIANCE & MEDICO-LEGAL RULES
+ 7. SYSTEM TROUBLESHOOTING & FAQ
+================================================================================
+
+
+================================================================================
+1. SYSTEM OVERVIEW & ARCHITECTURAL SUMMARY
+================================================================================
+HEALESTHETIC is an enterprise-grade multi-branch clinical management platform 
+built specifically for modern healthcare facilities combining General Outpatient 
+Medicine with Advanced Dermatology, Aesthetic Daycare, Trichology, and In-House 
+Diagnostics/Dispensary operations.
+
+Key System Principles:
+----------------------
+1. Single Shared Patient Identity: Every patient has one unique OP Number 
+   (e.g., A00373) across all branches, departments, and applications.
+2. Distinct Encounters: Every visit generates a unique Encounter ID (e.g., ENC-01001) 
+   categorized by type: CONSULTATION, DIRECT_PHARMACY, DIRECT_LAB, DIRECT_NURSING, 
+   or IMAGING.
+3. Multi-Department Parallel Routing: A doctor can simultaneously order medicines, 
+   blood tests, imaging scans, and nursing procedures in a single click without 
+   departmental bottlenecks.
+4. "Returned with Results" Closed Loop: When diagnostic tests are verified and 
+   released, the patient automatically returns to the doctor's dedicated review tab.
+5. Patient Portal Privacy Shield: Unverified lab or imaging reports are strictly 
+   hidden from the patient portal until formally verified and released by specialists.
+
+
+================================================================================
+2. ACCESS LINKS & LOGIN CREDENTIALS DIRECTORY
+================================================================================
+
+A. LOCAL ENVIRONMENT (When running on clinic computers via start-all.bat):
+-------------------------------------------------------------------------
+- Core Clinical App (Doctor / Nurse / Lab / Reception) : http://localhost:3000
+- HRMS & Doctor Rostering / Commissions Suite          : http://localhost:3001
+- Pharmacy & Inventory Dispensary OS                   : http://localhost:3002
+- Patient Self-Service Web Portal                     : http://localhost:3003
+- FastAPI Backend API & Interactive Swagger Docs      : http://localhost:8000/docs
+
+B. CLOUD PRODUCTION ENVIRONMENT (Accessible anywhere from Web/Tablets):
+-----------------------------------------------------------------------
+- Core Clinical App                                   : https://healh-software.netlify.app
+- HRMS & Doctor Rostering Suite                       : https://healh-hrms.netlify.app
+- Pharmacy & Inventory Dispensary OS                   : https://healh-pharmacy.netlify.app
+- Patient Self-Service Web Portal                     : https://healh-patient.netlify.app
+- Central Cloud Backend API                           : https://healh-software-ru1r.onrender.com
+
+C. DEFAULT CLINICAL & ADMINISTRATIVE LOGIN CREDENTIALS:
+-------------------------------------------------------------------------
+ROLE                     USERNAME          PASSWORD          DUTY / CAPABILITY
+-------------------------------------------------------------------------
+Clinic Director (Admin)  admin             Admin@1234        Full System Super Admin
+Consultant Dermatologist dr.ananya         Doctor@1234       Doctor Workbench & Rx
+General Physician        dr.rahul          Doctor@1234       Doctor Workbench & Rx
+Staff Nurse              nurse             Nurse@1234        Pre-Doc Triage & Care
+Front Desk Receptionist  reception         Reception@1234    Patient Intake & Queue
+Billing Cashier          cashier           Cashier@1234      POS & Payments
+Chief Pharmacist         pharmacist        Pharma@1234       Rx & Direct Walk-In
+Pathology Lab Tech       labtech           Lab@1234          Lab Tests & Results
+Radiologist              radiologist       Radio@1234        X-Ray, MRI, CT Scans
+Patient (Portal)         [Patient Phone]   [6-digit OTP]     Self-Service Portal
+-------------------------------------------------------------------------
+
+
+================================================================================
+3. COMPLETE PATIENT CLINICAL JOURNEY (STEP-BY-STEP FLOW)
+================================================================================
+
+Below is the exact chronological sequence of how a patient moves through the 
+clinic and software from the moment they walk through the front door:
+
+--------------------------------------------------------------------------------
+STEP 1: RECEPTION DESK INTAKE (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Receptionist (username: reception)
+Location: Core App -> "Patient Registration" or "Appointments"
+
+1. Patient arrives at clinic reception.
+2. Receptionist selects the registration mode:
+   A. "Primary Details Intake" (Fast-Track - Recommended for busy OPD):
+      - Only requires: Full Name + Date of Birth (Age auto-calculates) + Phone.
+      - Receptionist assigns the consulting Doctor (e.g., Dr. Ananya Nair).
+      - Clicking "Register Patient" instantly creates an OP Number (e.g., A00373), 
+        starts Encounter ENC-01001, and queues the patient directly to the Nurse 
+        Station for vital signs intake.
+   B. "Full HMS Registration" (Detailed aesthetic/surgical intake):
+      - Allows entering detailed residential address, emergency contact, referral 
+        source (Instagram, Google, Walk-in), and photo upload.
+3. Reception prints or issues the OP Card / Token Number.
+
+--------------------------------------------------------------------------------
+STEP 2: NURSE STATION TRIAGE & VITALS INTAKE (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Staff Nurse (username: nurse)
+Location: Core App -> "Nurse Station" or "Clinical Desk"
+
+1. Nurse calls patient to the intake desk.
+2. Nurse searches or selects the patient from the "Arrived - Awaiting Triage" queue.
+3. Nurse enters vital statistics:
+   - Blood Pressure (Systolic / Diastolic mmHg)
+   - Pulse / Heart Rate (bpm)
+   - Temperature (°F) & Oxygen Saturation (SpO2 %)
+   - Height (cm) & Weight (kg) -> System auto-calculates BMI & Category
+   - Confirms Blood Group (A+, B+, O+, AB+, etc.)
+   - Enters Known Drug Allergies (e.g., Penicillin, Sulfa, NSAIDs)
+4. Nurse clicks "Submit & Send to Doctor".
+5. The patient's status switches to "Ready for Doctor" and appears immediately in 
+   the Doctor's consultation room queue.
+
+--------------------------------------------------------------------------------
+STEP 3: DOCTOR WORKBENCH CONSULTATION (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Doctor (username: dr.ananya or dr.rahul)
+Location: Core App -> "Doctor Workbench"
+
+1. Doctor sits at consultation desk and selects their assigned Room / Branch.
+2. In the left panel, Doctor clicks on the patient in the "Consultation Queue".
+3. System loads complete clinical context:
+   - Verified Nurse Vitals banner highlighted in green (Recorded by Staff Nurse).
+   - Patient demographics, Blood Group, Age, and active allergies.
+   - Previous visit history, past prescriptions, and aesthetic treatment logs.
+4. Doctor enters clinical notes:
+   - Chief Complaints (e.g., "Inflammatory acne flare-up on cheeks for 3 weeks").
+   - Clinical Examination findings.
+   - Provisional / Final Diagnosis (e.g., "Grade III Acne Vulgaris").
+   - Treatment Plan & Patient Instructions.
+5. For Aesthetic Procedures: Doctor can click the Face/Body canvas to drop pins 
+   marking injection points (Botox/Filler units) or laser settings (Fluence, Pulse).
+
+--------------------------------------------------------------------------------
+STEP 4: MULTI-DEPARTMENT SIMULTANEOUS ORDERING (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Doctor
+Location: Inside "Doctor Workbench" -> Order Tabs
+
+In a single consultation, the doctor can simultaneously route orders to 4 separate 
+departments without opening separate software modules:
+
+A. Pharmacy Order (Rx):
+   - Type medicine name (e.g., "Doxt-SL 100mg" or "UV-Doux Sunscreen Gel").
+   - Select Dosage Form, Frequency (1-0-1), Timing (After Food), and Duration (14 days).
+   - Enter special instructions (e.g., "Take with full glass of water").
+   - Prescribed items route live to Pharmacy Dispensary (Port 3002).
+
+B. Laboratory Diagnostics Order:
+   - Check required tests: Complete Blood Count (CBC), Liver Function Test (LFT), 
+     HbA1c, Serum Ferritin, etc.
+   - Orders route live to Laboratory Station.
+
+C. Imaging & Radiology Order:
+   - Select scan modality & procedure: Chest X-Ray PA View, Ultrasound Abdomen, 
+     Brain MRI, or CT Scan.
+   - Orders route live to Radiology Department.
+
+D. Nursing & Daycare Procedure Order:
+   - Prescribe in-clinic treatments: Salicylic Chemical Peel, IV Infusion, 
+     Intralesional Steroid Injection, or Wound Dressing.
+   - Orders route live to Nursing Treatment Lounge.
+
+PRINTING PRESCRIPTIONS:
+- Doctor clicks "Print Prescription".
+- Letterhead outputs exact official branding: "HEALESTHETIC CLINIC & ADVANCED 
+  AESTHETIC CARE" with Doctor Medical Registration No, Address, and Helpline.
+
+--------------------------------------------------------------------------------
+STEP 5: LABORATORY STATION EXECUTION (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Lab Technician (username: labtech)
+Location: Core App -> "Laboratory"
+
+1. Patient arrives at sample collection counter.
+2. Lab tech views order LAB-CBC, collects EDTA blood sample, and records sample barcode.
+3. Test processing:
+   - Technician enters observed parameters (e.g., Hemoglobin: 11.2 g/dL, WBC: 8,400).
+   - System flags abnormal values in bold red.
+4. Verification & Release:
+   - Pathologist reviews draft findings.
+   - Pathologist clicks "Verify & Release Report".
+   - Status changes to RELEASED.
+   - An unbilled pending charge (e.g., ₹450) is automatically queued for billing.
+   - The verified report is now instantly accessible in the Doctor's "Returned with 
+     Results" queue and Patient Web Portal.
+
+--------------------------------------------------------------------------------
+STEP 6: RADIOLOGY & IMAGING EXECUTION (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Radiologist (username: radiologist)
+Location: Core App -> "Imaging & Radiology"
+
+1. Radiologist views active orders (e.g., Chest X-Ray PA View).
+2. Scan workflow:
+   - SCHEDULED -> IN_PROGRESS -> REPORT_READY.
+3. Radiologist types clinical impressions (e.g., "Normal cardiac silhouette; clear lung fields").
+4. Radiologist verifies scan and releases report.
+5. Unbilled pending charge is queued for cashier; report is routed to Doctor and Patient.
+
+--------------------------------------------------------------------------------
+STEP 7: PHARMACY DISPENSARY & OTC COUNTER (PORT 3002)
+--------------------------------------------------------------------------------
+Performed by: Pharmacist (username: pharmacist)
+Location: Pharmacy OS App -> "Rx Dispensing Queue" & "Direct Walk-In"
+
+Scenario A: Doctor Prescription Fulfillment (Rx Queue):
+1. Pharmacist opens "Incoming Doctor Prescriptions".
+2. System displays prescribed medicines, dosage, and remaining quantities.
+3. System applies FEFO (First-Expiry, First-Out) rule to pull the earliest expiring batch.
+4. Supports Partial Dispensing: If patient wants only 7 days instead of 14 days, 
+   pharmacist adjusts quantity; system retains remaining balance for future visits.
+5. If Schedule H1 drug is dispensed: mandatory compliance modal prompts for Doctor 
+   Registration No. and logs entry into the Schedule H1 Statutory Register.
+6. Pharmacist clicks "Dispense". Stock is automatically deducted from inventory, 
+   and a separate GST-compliant Pharmacy Bill (e.g., PHM-01001) is generated.
+
+Scenario B: Direct Walk-In Sale (No Doctor Consultation):
+1. A customer walks in solely to buy sunscreen, moisturizers, or OTC medicines.
+2. Pharmacist clicks "+ Direct Walk-In Sale" button.
+3. Search patient or type Name + DOB for quick registration.
+4. Add items to cart; click "Complete Walk-In Sale & Generate Bill".
+5. Creates a DIRECT_PHARMACY encounter and separate bill WITHOUT charging any doctor 
+   consultation fee.
+
+--------------------------------------------------------------------------------
+STEP 8: DOCTOR REVIEW VIA "RETURNED WITH RESULTS" (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Doctor
+Location: Doctor Workbench -> "Returned with Results" Tab
+
+1. After lab/imaging tests are released, the patient automatically appears in the 
+   Doctor's "Returned with Results" tab with an active notification badge.
+2. Doctor clicks patient:
+   - System displays verified lab parameters, abnormal indicators, and scan findings.
+3. Doctor discusses results with patient, adjusts medication if necessary, and advises follow-up.
+4. Doctor clicks "Complete Consultation & Close Encounter".
+
+--------------------------------------------------------------------------------
+STEP 9: CENTRAL BILLING & CASHIER POS (PORT 3000)
+--------------------------------------------------------------------------------
+Performed by: Cashier (username: cashier)
+Location: Core App -> "Billing & Cashier"
+
+1. Cashier opens Billing Desk and selects patient.
+2. Intelligent Unbilled Charges Sync:
+   - System automatically aggregates all completed services (Consultation Fee, 
+     CBC Blood Test, Chest X-Ray, Nursing Chemical Peel).
+3. Cashier applies any authorized discount or promotional package redemption.
+4. Cashier selects payment mode: Cash, Card (POS), UPI (GooglePay / PhonePe).
+5. Click "Collect Payment & Print Invoice":
+   - Produces official tax invoice showing CGST + SGST breakdown and zero balance.
+
+--------------------------------------------------------------------------------
+STEP 10: PATIENT SELF-SERVICE WEB PORTAL (PORT 3003)
+--------------------------------------------------------------------------------
+Performed by: Patient
+Location: Patient Portal App (https://healh-patient.netlify.app or Port 3003)
+
+1. Patient opens portal from their smartphone or home browser.
+2. Enters registered mobile number (e.g., 9876543210).
+3. Enters 6-digit OTP received via SMS (or Dev OTP displayed during testing).
+4. Patient Dashboard Features:
+   - Profile card with OP No, Blood Group, and Allergies.
+   - Visit Timeline: History of all clinic visits and encounters.
+   - Prescriptions: Digital list of medicines, dosage, and doctor instructions.
+   - Lab Reports: Download official PDF reports for released lab tests.
+   - Imaging Reports: View radiologist findings and scan documentation.
+   - Invoices: View past payment receipts and balance status.
+
+
+================================================================================
+4. DOCTOR WORKBENCH IN-DEPTH HOW-TO GUIDE
+================================================================================
+
+How to perform daily clinical tasks quickly:
+
+1. How to switch between waiting patients and test returnees:
+   - Left Sidebar Tab 1: "Active Consultation Queue" (New patients waiting to be seen).
+   - Left Sidebar Tab 2: "Returned with Results" (Patients whose lab/X-ray tests are done).
+
+2. How to check Nurse Vitals:
+   - Look at the top green banner in the patient chart.
+   - Check BP, Pulse, SpO2, BMI, and Blood Group verified by the nurse.
+
+3. How to write a fast prescription:
+   - In Rx tab, type the first 3 letters of brand or salt name.
+   - Select frequency: 1-0-1 (Morning & Night), 1-0-0 (Morning only), 0-0-1 (Night only), 
+     or SOS (As needed).
+   - Select duration in days (e.g., 5, 7, 14, 30).
+   - Quantity auto-calculates (e.g., 1-0-1 for 7 days = 14 tablets).
+
+4. How to order a Lab Test:
+   - In Lab tab, check the box next to CBC, LFT, or HbA1c, or search custom tests.
+   - Add clinical notes for the technician (e.g., "Fasting sample required").
+
+5. How to order an X-Ray / MRI / USG:
+   - In Imaging tab, pick Modality (X-Ray, MRI, Ultrasound, CT).
+   - Select body part / view (e.g., Chest PA, USG Abdomen).
+
+6. How to finish a consultation:
+   - Once all notes and orders are written, click "Finalize Consultation".
+   - Click "Print Prescription" to generate the signed clinical letterhead.
+
+
+================================================================================
+5. AESTHETIC PROCEDURES, PACKAGES & SESSIONS
+================================================================================
+For aesthetic and dermatology treatments, HEALESTHETIC provides multi-session 
+package tracking:
+
+1. Selling a Package:
+   - Reception or Billing sells a package (e.g., "Laser Hair Reduction - 6 Sessions" 
+     for ₹15,000).
+   - Package validity is locked (e.g., 12 months).
+
+2. Redeeming a Session:
+   - Doctor or Aesthetician selects patient package tab.
+   - System shows: "Sessions Completed: 2 / 6 — 4 Sessions Remaining".
+   - Doctor logs session details: Spot Size (12mm), Fluence (24 J/cm²), Pulse Width (30ms).
+   - Doctor clicks "Redeem Session 3".
+   - Session counter increments to 3/6; no billing charge is created since the 
+     package was prepaid.
+
+
+================================================================================
+6. REGULATORY COMPLIANCE & MEDICO-LEGAL RULES
+================================================================================
+The software enforces Indian clinical, pharmaceutical, and tax standards:
+
+1. Schedule H1 Mandatory Register:
+   - For restricted antibiotics (e.g., Doxycycline, Cefixime) and psychotropics, 
+     the pharmacy module locks dispensing until Patient Aadhaar/ID, Doctor TCMC 
+     Registration Number, and clinical indication are recorded.
+   - Generates statutory Form 35 register ready for drug inspector audits.
+
+2. FEFO Expiry Protection:
+   - System prevents dispensing newer stock if an earlier batch of the same drug 
+     is available and unexpired.
+   - Batches within 30 days of expiry are highlighted in amber; expired batches 
+     are locked from dispensing entirely.
+
+3. Two-Tier Diagnostic Verification:
+   - Laboratory and imaging results remain in "DRAFT" state until explicitly verified 
+     by a pathologist or radiologist.
+   - Draft reports are strictly hidden from patient view to prevent misinterpretation 
+     before clinical correlation.
+
+4. Hybrid GST Split:
+   - Medical consultations, doctor fees, and inpatient nursing care: 0% GST (Exempt).
+   - Pharmaceutical drugs & medical devices: 5% or 12% GST (HSN 3004).
+   - Cosmetic skincare & aesthetic retail products: 18% or 28% GST (HSN 3304).
+   - System splits CGST/SGST automatically on every invoice.
+
+
+================================================================================
+7. SYSTEM TROUBLESHOOTING & FAQ
+================================================================================
+
+Q1: The patient says they cannot see their lab test in the Patient Portal?
+A: Check with the lab technician. Reports only appear in the Patient Portal after 
+   the status is marked as "RELEASED" by the pathologist.
+
+Q2: How do we start the software in the morning on clinic computers?
+A: Double-click "start-all.bat" on the desktop. It opens 5 terminal windows and 
+   starts the Backend (8000), Core App (3000), HRMS (3001), Pharmacy (3002), 
+   and Patient Portal (3003).
+
+Q3: How do we stop all services in the evening?
+A: Double-click "stop-all.bat" on the desktop. It safely shuts down all 5 services.
+
+Q4: What if a patient loses their prescription paper?
+A: Doctor or Receptionist can re-open the patient chart, click on the encounter date, 
+   and click "Print Prescription" to reprint anytime with the exact original timestamp.
+
+Q5: Can a patient buy skincare without seeing a doctor?
+A: Yes. The pharmacist uses the "+ Direct Walk-In Sale" button in Port 3002. It 
+   generates a Pharmacy bill without creating any consultation charge.
+
+================================================================================
+END OF OPERATING MANUAL — HEALESTHETIC HEALTHCARE GROUP
+================================================================================
