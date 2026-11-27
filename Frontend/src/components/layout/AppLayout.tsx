@@ -42,6 +42,7 @@ const NAV: NavSection[] = [
     items: [
       { to: '/clinical/workbench', icon: Stethoscope, label: 'Doctor EMR Workbench', roles: ['Super Admin', 'Branch Manager', 'Doctor'] },
       { to: '/clinical/lab', icon: FlaskConical, label: 'Lab Orders & Diagnostics', roles: ['Super Admin', 'Branch Manager', 'Doctor', 'Nurse', 'Lab Technician'] },
+      { to: '/clinical/imaging', icon: Camera, label: 'Imaging & Radiology (X-Ray/MRI)', roles: ['Super Admin', 'Branch Manager', 'Doctor', 'Nurse', 'Radiologist'] },
     ],
   },
   {

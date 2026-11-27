@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Plus, Search, CheckCircle2, AlertCircle, X, ShieldAlert } from 'lucide-react';
+import { Pill, Plus, Search, CheckCircle2, AlertCircle, X, ShieldAlert, Sparkles, Thermometer, Lock, FileSpreadsheet } from 'lucide-react';
 import { medicinesApi } from '@/api';
+import { getPharmacyStore } from '@/lib/pharmacyEnterpriseData';
 import type { Medicine } from '@/types';
 
 export default function MedicineMasterPage() {
@@ -8,6 +9,10 @@ export default function MedicineMasterPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dosageFilter, setDosageFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'salts'>('catalog');
+
+  // Enterprise Pharmacy Store for Salt Master & HSN codes
+  const store = getPharmacyStore();
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -25,6 +30,10 @@ export default function MedicineMasterPage() {
     default_frequency: '1-0-1',
     default_timing: 'After Food',
     route: 'Oral',
+    hsn_code: '30049060',
+    gst_rate: 12,
+    is_schedule_h1: false,
+    is_cold_chain: false,
   });
 
   const loadMedicines = async () => {
@@ -45,8 +54,13 @@ export default function MedicineMasterPage() {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -68,6 +82,10 @@ export default function MedicineMasterPage() {
         default_frequency: '1-0-1',
         default_timing: 'After Food',
         route: 'Oral',
+        hsn_code: '30049060',
+        gst_rate: 12,
+        is_schedule_h1: false,
+        is_cold_chain: false,
       });
       await loadMedicines();
       setTimeout(() => {
@@ -92,187 +110,293 @@ export default function MedicineMasterPage() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-7xl 2xl:max-w-[1700px] mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-stone-200 shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Medicine & Formulation Master
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-900 border border-purple-300">
+              Formulary &amp; Chemical Salt Architecture
+            </span>
+            <span className="text-xs text-stone-500 font-medium">HSN Classification &amp; India GST Slabs</span>
+          </div>
+          <h1 className="text-2xl font-black text-stone-900 mt-1 flex items-center gap-2">
+            <Pill className="text-purple-700" size={26} />
+            Medicine Formulary &amp; Chemical Salt Master
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Pharmacy formulary, dosage recommendations & topical skincare catalog
+          <p className="text-xs text-stone-600 mt-0.5">
+            Salt-to-Brand bioequivalent mapping, HSN Codes (3004 / 3304 / 3307), Indian GST tax rates, and Schedule H1 statutory classifications.
           </p>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold shadow-xs transition"
-        >
-          <Plus className="w-4 h-4" />
-          + Add New Formulation
-        </button>
-      </div>
-
-      {/* Filter and Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Search by drug name, brand, or generic active molecule..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-          />
-        </div>
-
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500">Dosage Form:</span>
-          <select
-            value={dosageFilter}
-            onChange={(e) => setDosageFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'catalog'
+                ? 'bg-purple-800 text-white shadow-md'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+            }`}
           >
-            <option value="all">All Forms</option>
-            <option value="Tablet">Tablet</option>
-            <option value="Capsule">Capsule</option>
-            <option value="Cream">Cream</option>
-            <option value="Gel">Gel</option>
-            <option value="Lotion">Lotion</option>
-            <option value="Serum">Serum</option>
-            <option value="Facewash">Facewash</option>
-          </select>
+            <Pill size={14} />
+            Formulary Catalog ({medicines.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('salts')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'salts'
+                ? 'bg-stone-900 text-white shadow-md'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+            }`}
+          >
+            <Sparkles size={14} />
+            Chemical Salt Families ({store.salts.length})
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 rounded-xl text-xs font-black bg-emerald-700 hover:bg-emerald-600 text-white shadow-md transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus size={15} />
+            + Add Formulation
+          </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-xs uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-4">Medicine Name</th>
-                <th className="py-3 px-4">Generic Molecule</th>
-                <th className="py-3 px-4">Brand</th>
-                <th className="py-3 px-4">Form & Strength</th>
-                <th className="py-3 px-4">Default Frequency</th>
-                <th className="py-3 px-4">Timing & Route</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400 text-sm">
-                    {loading ? 'Loading medicine catalog...' : 'No medicines found'}
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((m) => (
-                  <tr key={m.id} className="hover:bg-slate-50/70 transition">
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900 flex items-center gap-2">
-                        <Pill className="w-3.5 h-3.5 text-violet-600 shrink-0" />
-                        <span>{m.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-xs text-slate-600 font-mono">
-                      {m.generic_name || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-xs font-semibold text-slate-700">
-                      {m.brand_name || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-xs">
-                      <span className="bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded mr-1">
-                        {m.dosage_form}
-                      </span>
-                      <span className="text-slate-500">{m.strength}</span>
-                    </td>
-                    <td className="py-3 px-4 text-xs font-mono font-medium text-violet-700">
-                      {m.default_frequency} ({m.default_dosage})
-                    </td>
-                    <td className="py-3 px-4 text-xs text-slate-600">
-                      <span>{m.default_timing}</span>
-                      <span className="text-slate-400 ml-1">· {m.route}</span>
-                    </td>
+      {activeTab === 'catalog' && (
+        <div className="space-y-4">
+          {/* Filter and Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-stone-200 shadow-xs">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-stone-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search by drug name, brand, or generic active molecule..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 border border-stone-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-purple-600"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-stone-600">Dosage Form:</span>
+              <select
+                value={dosageFilter}
+                onChange={(e) => setDosageFilter(e.target.value)}
+                className="border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-bold text-stone-800"
+              >
+                <option value="all">All Forms</option>
+                <option value="Tablet">Tablet</option>
+                <option value="Capsule">Capsule</option>
+                <option value="Cream">Cream</option>
+                <option value="Gel">Gel</option>
+                <option value="Lotion">Lotion</option>
+                <option value="Serum">Serum</option>
+                <option value="Facewash">Facewash</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-stone-100/70 border-b border-stone-200 text-stone-600 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4">Medicine Name</th>
+                    <th className="py-3 px-4">Generic Molecule</th>
+                    <th className="py-3 px-4">Brand</th>
+                    <th className="py-3 px-4">Form &amp; Strength</th>
+                    <th className="py-3 px-4">Regulatory &amp; GST</th>
+                    <th className="py-3 px-4">Default Frequency &amp; Route</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-stone-400 text-sm">
+                        {loading ? 'Loading medicine catalog...' : 'No medicines found'}
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((m) => {
+                      const isH1 = (m.name || '').includes('Doxy') || (m.name || '').includes('Sotret') || (m.name || '').includes('Botox') || (m.generic_name || '').includes('Isotretinoin');
+                      const isCold = (m.name || '').includes('Botox') || (m.name || '').includes('Juvederm') || (m.name || '').includes('Glutathione');
+                      const isCosmeceutical = (m.name || '').includes('Sunscreen') || (m.name || '').includes('Serum') || (m.name || '').includes('Ahaglow');
+                      const hsn = isCosmeceutical ? '33049990 (18% GST)' : '30049060 (12% GST)';
+
+                      return (
+                        <tr key={m.id} className="hover:bg-stone-50/70 transition">
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-stone-900 flex items-center gap-2">
+                              <Pill className="w-3.5 h-3.5 text-purple-700 shrink-0" />
+                              <span>{m.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-stone-600 font-mono">
+                            {m.generic_name || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-xs font-semibold text-stone-800">
+                            {m.brand_name || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-xs">
+                            <span className="bg-stone-100 text-stone-800 font-bold px-2 py-0.5 rounded mr-1">
+                              {m.dosage_form}
+                            </span>
+                            <span className="text-stone-500">{m.strength}</span>
+                          </td>
+                          <td className="py-3 px-4 text-xs font-mono">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-emerald-800 font-bold">{hsn}</span>
+                              {isH1 && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                  H1
+                                </span>
+                              )}
+                              {isCold && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                                  2-8°C
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-stone-700">
+                            <span className="font-mono font-bold text-purple-800">{m.default_frequency} ({m.default_dosage})</span>
+                            <span className="text-stone-400 ml-1">· {m.default_timing} ({m.route})</span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* TAB 2: CHEMICAL SALTS HIERARCHY */}
+      {activeTab === 'salts' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {store.salts.map((salt) => (
+            <div key={salt.id} className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                <div>
+                  <span className="font-mono font-black text-xs text-purple-900">{salt.id.toUpperCase()}</span>
+                  <h3 className="font-black text-stone-900 text-sm mt-0.5">{salt.chemical_name}</h3>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {salt.is_schedule_h1 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                      SCHEDULE H1
+                    </span>
+                  )}
+                  {salt.is_cold_chain && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300">
+                      COLD CHAIN
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-xs text-stone-600 space-y-1">
+                <div>Therapeutic Class: <strong>{salt.therapeutic_class}</strong></div>
+                <div>HSN Code: <strong className="font-mono">{salt.hsn_code}</strong> · GST: <strong>{salt.gst_rate}%</strong></div>
+              </div>
+
+              {/* Mapped brand substitutes */}
+              <div className="pt-2 border-t border-stone-100 space-y-1.5">
+                <div className="text-[11px] font-black text-stone-500 uppercase tracking-wider">
+                  Associated Brand Formulations ({salt.substitute_brands.length})
+                </div>
+                {salt.substitute_brands.map((b, idx) => (
+                  <div key={idx} className="p-2 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-stone-900">{b.brand_name}</span>
+                      <span className="text-[10px] text-stone-500 block">{b.manufacturer} · {b.dosage_form}</span>
+                    </div>
+                    <div className="text-right font-mono">
+                      <span className="font-black text-stone-900">₹{b.mrp.toFixed(2)}</span>
+                      <span className="text-[10px] text-emerald-700 block font-bold">{b.in_stock_units} in stock</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* CREATE MEDICINE MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-stone-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div className="flex items-center gap-2">
-                <Pill className="w-5 h-5 text-violet-600" />
-                <h2 className="text-lg font-bold text-slate-900">Add Medicine Formulation</h2>
+                <Pill className="w-5 h-5 text-purple-700" />
+                <h2 className="text-base font-black text-stone-900">Add Medicine Formulation</h2>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-stone-400 hover:text-stone-600 p-1 rounded-lg font-bold"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
             {message && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-lg text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{message}</span>
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 size={16} />
+                {message}
               </div>
             )}
 
             <form onSubmit={handleCreate} className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Medicine Name *</label>
+                <label className="font-bold text-stone-700">Formulation Name *</label>
                 <input
                   type="text"
                   required
                   name="name"
+                  placeholder="e.g. Doxt-SL 100mg"
                   value={formData.name}
                   onChange={handleInputChange}
-                  placeholder="e.g. Doxycycline 100mg"
-                  className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                  className="w-full p-2 border border-stone-200 rounded-lg font-bold mt-1"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Generic Molecule</label>
+                  <label className="font-bold text-stone-700">Active Generic Molecule</label>
                   <input
                     type="text"
                     name="generic_name"
+                    placeholder="e.g. Doxycycline Hyclate"
                     value={formData.generic_name}
                     onChange={handleInputChange}
-                    placeholder="e.g. Doxycycline Hyclate"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                    className="w-full p-2 border border-stone-200 rounded-lg mt-1"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Brand Name</label>
+                  <label className="font-bold text-stone-700">Brand Name</label>
                   <input
                     type="text"
                     name="brand_name"
+                    placeholder="e.g. Dr. Reddy"
                     value={formData.brand_name}
                     onChange={handleInputChange}
-                    placeholder="e.g. Doxt-SL"
-                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                    className="w-full p-2 border border-stone-200 rounded-lg mt-1"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Dosage Form</label>
+                  <label className="font-bold text-stone-700">Dosage Form</label>
                   <select
                     name="dosage_form"
                     value={formData.dosage_form}
                     onChange={handleInputChange}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white"
+                    className="w-full p-2 border border-stone-200 rounded-lg font-bold mt-1"
                   >
                     <option value="Tablet">Tablet</option>
                     <option value="Capsule">Capsule</option>
@@ -280,84 +404,69 @@ export default function MedicineMasterPage() {
                     <option value="Gel">Gel</option>
                     <option value="Lotion">Lotion</option>
                     <option value="Serum">Serum</option>
-                    <option value="Facewash">Facewash</option>
+                    <option value="Injection">Injection</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Strength</label>
+                  <label className="font-bold text-stone-700">Strength</label>
                   <input
                     type="text"
                     name="strength"
+                    placeholder="100mg / 0.05%"
                     value={formData.strength}
                     onChange={handleInputChange}
-                    placeholder="e.g. 100mg / 20%"
-                    className="w-full border border-slate-300 rounded-lg p-2"
+                    className="w-full p-2 border border-stone-200 rounded-lg mt-1"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Route</label>
-                  <select
-                    name="route"
-                    value={formData.route}
-                    onChange={handleInputChange}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white"
-                  >
-                    <option value="Oral">Oral</option>
-                    <option value="Topical">Topical</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Default Dosage</label>
+                  <label className="font-bold text-stone-700">HSN Code</label>
                   <input
                     type="text"
-                    name="default_dosage"
-                    value={formData.default_dosage}
+                    name="hsn_code"
+                    value={formData.hsn_code}
                     onChange={handleInputChange}
-                    placeholder="1 Tab / Pea size"
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Frequency</label>
-                  <input
-                    type="text"
-                    name="default_frequency"
-                    value={formData.default_frequency}
-                    onChange={handleInputChange}
-                    placeholder="1-0-1 / 0-0-1"
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Timing</label>
-                  <input
-                    type="text"
-                    name="default_timing"
-                    value={formData.default_timing}
-                    onChange={handleInputChange}
-                    placeholder="After Food / Night"
-                    className="w-full border border-slate-300 rounded-lg p-2"
+                    className="w-full p-2 border border-stone-200 rounded-lg font-mono mt-1"
                   />
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-stone-50 border border-stone-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_schedule_h1"
+                    checked={formData.is_schedule_h1}
+                    onChange={handleInputChange}
+                    className="rounded text-rose-600"
+                  />
+                  <span className="font-bold text-stone-800">Schedule H1 Drug</span>
+                </label>
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-stone-50 border border-stone-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_cold_chain"
+                    checked={formData.is_cold_chain}
+                    onChange={handleInputChange}
+                    className="rounded text-sky-600"
+                  />
+                  <span className="font-bold text-stone-800">Cold Chain (2-8°C)</span>
+                </label>
+              </div>
+
+              <div className="pt-3 border-t border-stone-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition"
+                  className="px-4 py-2 rounded-xl text-stone-600 font-bold hover:bg-stone-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-violet-600 hover:bg-violet-700 text-white font-semibold px-5 py-2 rounded-lg shadow-xs transition disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-black shadow-md transition cursor-pointer"
                 >
-                  {submitting ? 'Saving...' : 'Save to Formulary'}
+                  {submitting ? 'Saving...' : 'Save Formulation'}
                 </button>
               </div>
             </form>

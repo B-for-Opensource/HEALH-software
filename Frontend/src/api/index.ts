@@ -1,3 +1,4 @@
+import { apiRequest } from './httpClient';
 import {
   mockAuthService,
   mockPatientsService,
@@ -27,6 +28,8 @@ import {
   importDatabaseJson,
 } from '@/lib/mockDb';
 
+const IS_DEMO_MODE = (import.meta as any).env?.VITE_DEMO_MODE === 'true';
+
 export {
   resetDatabaseToDefaults,
   getDb,
@@ -37,14 +40,62 @@ export {
   importDatabaseJson,
 };
 
-// ----- PATIENTS -----
+// ----- PATIENTS (Live FastAPI + PostgreSQL) -----
 export const patientsApi = {
-  list:    (params?: Record<string, any>): Promise<any> => mockPatientsService.list(params),
-  search:  (q: string): Promise<any>                    => mockPatientsService.search(q),
-  get:     (id: string): Promise<any>                   => mockPatientsService.get(id),
-  history: (id: string): Promise<any>                   => mockPatientsService.history(id),
-  create:  (data: unknown): Promise<any>                => mockPatientsService.create(data),
-  update:  (id: string, data: unknown): Promise<any>    => mockPatientsService.update(id, data),
+  list:    (params?: Record<string, any>): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.list(params) : apiRequest(`/api/patients${params?.search ? `?search=${encodeURIComponent(params.search)}` : ''}`),
+  search:  (q: string): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.search(q) : apiRequest(`/api/patients/search?q=${encodeURIComponent(q)}`),
+  get:     (id: string): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.get(id) : apiRequest(`/api/patients/${id}`),
+  history: (id: string): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.history(id) : apiRequest(`/api/patients/${id}/history`),
+  create:  (data: unknown): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.create(data) : apiRequest('/api/patients', { method: 'POST', body: JSON.stringify(data) }),
+  update:  (id: string, data: unknown): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.update(id, data) : apiRequest(`/api/patients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  merge:   (data: { surviving_patient_id: string; merged_patient_id: string; reason: string }): Promise<any> =>
+    apiRequest('/api/patients/merge', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+// ----- ENCOUNTERS & PIPELINE (Live FastAPI) -----
+export const encountersApi = {
+  list: (params?: Record<string, string>): Promise<any> => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return apiRequest(`/api/encounters${qs}`);
+  },
+  pipelineSummary: (): Promise<any> => apiRequest('/api/encounters/pipeline/summary'),
+  create: (data: unknown): Promise<any> => apiRequest('/api/encounters', { method: 'POST', body: JSON.stringify(data) }),
+  saveNursingAssessment: (encounterId: string, data: unknown): Promise<any> =>
+    apiRequest(`/api/encounters/${encounterId}/nursing-assessment`, { method: 'POST', body: JSON.stringify(data) }),
+  createDoctorOrders: (encounterId: string, data: unknown): Promise<any> =>
+    apiRequest(`/api/encounters/${encounterId}/doctor-orders`, { method: 'POST', body: JSON.stringify(data) }),
+  close: (encounterId: string): Promise<any> =>
+    apiRequest(`/api/encounters/${encounterId}/close`, { method: 'POST' }),
+};
+
+// ----- IMAGING & RADIOLOGY (X-Ray / MRI / CT / USG) -----
+export const imagingApi = {
+  listServices: (): Promise<any> => apiRequest('/api/imaging/services'),
+  createService: (data: unknown): Promise<any> => apiRequest('/api/imaging/services', { method: 'POST', body: JSON.stringify(data) }),
+  listOrders: (params?: Record<string, string>): Promise<any> => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return apiRequest(`/api/imaging/orders${qs}`);
+  },
+  createOrder: (data: unknown): Promise<any> => apiRequest('/api/imaging/orders', { method: 'POST', body: JSON.stringify(data) }),
+  updateOrder: (orderId: string, data: unknown): Promise<any> =>
+    apiRequest(`/api/imaging/orders/${orderId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
+// ----- FINANCE, PENDING CHARGES, REFUNDS & NOTIFICATIONS -----
+export const financeApi = {
+  pendingCharges: (patientId?: string): Promise<any> =>
+    apiRequest(`/api/finance/pending-charges${patientId ? `?patient_id=${patientId}` : ''}`),
+  requestRefund: (data: { bill_id: string; amount: number; reason: string }): Promise<any> =>
+    apiRequest('/api/finance/refund-requests', { method: 'POST', body: JSON.stringify(data) }),
+  approveRefund: (reqId: string, decision: 'APPROVED' | 'REJECTED'): Promise<any> =>
+    apiRequest(`/api/finance/refund-requests/${reqId}/approve`, { method: 'POST', body: JSON.stringify({ decision }) }),
+  notifications: (): Promise<any> => apiRequest('/api/finance/notifications'),
 };
 
 // ----- APPOINTMENTS -----
@@ -53,6 +104,7 @@ export const appointmentsApi = {
   followups:    (params?: Record<string, any>): Promise<any> => mockAppointmentsService.followups(params),
   get:          (id: string): Promise<any>                   => mockAppointmentsService.get(id),
   create:       (data: unknown): Promise<any>                => mockAppointmentsService.create(data),
+  update:       (id: string, data: any): Promise<any>        => mockAppointmentsService.update(id, data),
   updateStatus: (id: string, status: string): Promise<any>   => mockAppointmentsService.updateStatus(id, status),
   cancel:       (id: string): Promise<any>                   => mockAppointmentsService.cancel(id),
 };
@@ -137,19 +189,31 @@ export const hrmsApi = {
   approveCommission: (id: string): Promise<any> => mockHrmsService.approveCommission(id),
 };
 
-// ----- LAB & DIAGNOSTICS -----
+// ----- LAB & DIAGNOSTICS (Live FastAPI) -----
 export const labApi = {
-  list:         (params?: any): Promise<any> => mockLabService.list(params),
-  create:       (data: any): Promise<any>   => mockLabService.create(data),
-  updateStatus: (id: string, status: string, resultData?: any): Promise<any> => mockLabService.updateStatus(id, status, resultData),
+  services:     (): Promise<any> => IS_DEMO_MODE ? Promise.resolve([]) : apiRequest('/api/lab/services'),
+  createService:(data: any): Promise<any> => apiRequest('/api/lab/services', { method: 'POST', body: JSON.stringify(data) }),
+  list:         (params?: any): Promise<any> =>
+    IS_DEMO_MODE ? mockLabService.list(params) : apiRequest(`/api/lab/orders${params?.status ? `?status=${params.status}` : ''}`),
+  create:       (data: any): Promise<any> =>
+    IS_DEMO_MODE ? mockLabService.create(data) : apiRequest('/api/lab/orders', { method: 'POST', body: JSON.stringify(data) }),
+  updateStatus: (id: string, status: string, resultData?: any): Promise<any> =>
+    IS_DEMO_MODE ? mockLabService.updateStatus(id, status, resultData) : apiRequest(`/api/lab/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, ...(resultData || {}) }) }),
+  saveResults:  (id: string, data: any): Promise<any> =>
+    apiRequest(`/api/lab/orders/${id}/results`, { method: 'POST', body: JSON.stringify(data) }),
 };
 
-// ----- NURSING PROCEDURES & CLINIC DESK -----
+// ----- NURSING PROCEDURES & CLINIC DESK (Live FastAPI) -----
 export const nursingApi = {
-  list:         (params?: any): Promise<any> => mockNursingService.list(params),
-  create:       (data: any): Promise<any>   => mockNursingService.create(data),
-  updateStatus: (id: string, status: string, notes?: string, vitals?: any): Promise<any> => mockNursingService.updateStatus(id, status, notes, vitals),
-  catalogue:    (): Promise<any>            => mockNursingService.catalogue(),
+  list:         (params?: any): Promise<any> =>
+    IS_DEMO_MODE ? mockNursingService.list(params) : apiRequest(`/api/nursing/procedures${params?.status ? `?status=${params.status}` : ''}`),
+  create:       (data: any): Promise<any> =>
+    IS_DEMO_MODE ? mockNursingService.create(data) : apiRequest('/api/nursing/procedures', { method: 'POST', body: JSON.stringify(data) }),
+  complete:     (id: string, data?: any): Promise<any> =>
+    apiRequest(`/api/nursing/procedures/${id}/complete`, { method: 'PATCH', body: JSON.stringify(data || {}) }),
+  updateStatus: (id: string, status: string, notes?: string, vitals?: any): Promise<any> =>
+    IS_DEMO_MODE ? mockNursingService.updateStatus(id, status, notes, vitals) : apiRequest(`/api/nursing/procedures/${id}/complete`, { method: 'PATCH', body: JSON.stringify({ status, notes, vitals }) }),
+  catalogue:    (): Promise<any> => mockNursingService.catalogue(),
 };
 
 // ----- CASHIER SHIFTS & DRAWER RECONCILIATION -----
@@ -180,9 +244,25 @@ export const mastersApi = {
   createStaff: (data: unknown): Promise<any> => mockMastersService.createStaff(data),
 };
 
-// ----- AUTH -----
+// ----- AUTH (Live FastAPI JWT + Refresh Token) -----
 export const authApi = {
-  login:          (data: { username: string; password: string }): Promise<any> => mockAuthService.login(data),
-  me:             (): Promise<any>         => mockAuthService.me(),
-  changePassword: (data: unknown): Promise<any> => mockAuthService.changePassword(),
+  login: async (data: { username: string; password: string }): Promise<any> => {
+    if (IS_DEMO_MODE) return mockAuthService.login(data);
+    const res = await apiRequest<any>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (res?.token) localStorage.setItem('heal_token', res.token);
+    if (res?.refresh_token) localStorage.setItem('heal_refresh_token', res.refresh_token);
+    return res;
+  },
+  me: (): Promise<any> => IS_DEMO_MODE ? mockAuthService.me() : apiRequest('/api/auth/me'),
+  changePassword: (data: unknown): Promise<any> =>
+    IS_DEMO_MODE ? mockAuthService.changePassword() : apiRequest('/api/auth/change-password', { method: 'POST', body: JSON.stringify(data) }),
+  logout: (): Promise<any> => {
+    const refresh_token = localStorage.getItem('heal_refresh_token');
+    localStorage.removeItem('heal_token');
+    localStorage.removeItem('heal_refresh_token');
+    return apiRequest('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refresh_token }) });
+  },
 };

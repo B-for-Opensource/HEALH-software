@@ -6,29 +6,37 @@ import CommandPalette from '@/components/shared/CommandPalette';
 import BranchNetworkModal from '@/components/shared/BranchNetworkModal';
 import HealLogo from '@/components/shared/HealLogo';
 import AppSwitcher from '@/components/shared/AppSwitcher';
-import PatientPipelineTracker from '@/components/shared/PatientPipelineTracker';
 import {
   Pill, Truck, Settings, LogOut, Menu, X, ChevronRight,
-  MapPin, Search, Receipt, Layers, FileText
+  MapPin, Search, Receipt, Layers, FileText, ShieldAlert,
+  Calculator, Syringe
 } from 'lucide-react';
 
 const PHARMACY_NAV = [
   {
-    section: '1. Clinical Pharmacy & Dispensing',
+    section: '1. Dispensing & Counter POS',
     items: [
-      { to: '/pharmacy/dispensary', icon: Pill, label: 'Rx Dispensing & FEFO Batches' },
+      { to: '/pharmacy/dispensary', icon: Pill, label: 'Rx Dispensing & Counter' },
     ],
   },
   {
-    section: '2. Procurement & Consumables',
+    section: '2. Batches & FEFO Inventory',
     items: [
-      { to: '/inventory/transfers', icon: Truck, label: 'PO, GRN & Branch Transfers' },
+      { to: '/pharmacy/batches', icon: Layers, label: 'FEFO Batches & Vial Splitting' },
     ],
   },
   {
-    section: '3. Formulary & Medicine Master',
+    section: '3. Procurement & Inwards',
     items: [
-      { to: '/masters/medicines', icon: Settings, label: 'Medicine & Formulary Master' },
+      { to: '/pharmacy/procurement', icon: Truck, label: 'Procurement, PO & GRN' },
+      { to: '/pharmacy/expiry-returns', icon: Receipt, label: 'Expiry Returns & Debit Notes' },
+    ],
+  },
+  {
+    section: '4. Formulary & Statutory Vault',
+    items: [
+      { to: '/masters/medicines', icon: Settings, label: 'Formulary, Salts & HSN' },
+      { to: '/pharmacy/regulatory-vault', icon: ShieldAlert, label: 'Schedule H1 & GST Vault' },
     ],
   },
 ];
@@ -117,7 +125,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div>
               <HealLogo size="sm" variant="light" showSubtitle={false} />
               <div className="text-[10px] font-bold tracking-wider text-emerald-400 uppercase mt-0.5">
-                Pharmacy & Dispensary OS
+                Pharmacy &amp; Inventory OS
               </div>
             </div>
           ) : (
@@ -243,10 +251,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Scrollable Main Content */}
+        {/* Scrollable Main Content - NO PatientPipelineTracker */}
         <main className="flex-1 overflow-y-auto bg-[#FAF7F2] p-3 sm:p-5 md:p-6 2xl:p-8 3xl:p-10 w-full">
           <div className="max-w-7xl 2xl:max-w-[1700px] 3xl:max-w-[2200px] mx-auto w-full">
-            <PatientPipelineTracker />
             {children}
           </div>
         </main>

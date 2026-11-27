@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, resetDatabaseToDefaults, mockBranchService } from '@/api';
-import HealLogo from '@/components/shared/HealLogo';
-import AppSwitcher from '@/components/shared/AppSwitcher';
-import { ShieldCheck, RotateCcw, MapPin, Sparkles, ArrowRight, Pill } from 'lucide-react';
+import { ShieldCheck, RotateCcw, MapPin, Sparkles, ArrowRight, Pill, FlaskConical, Package, CheckCircle2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('Admin@1234');
+  const [username, setUsername] = useState('pharmacist');
+  const [password, setPassword] = useState('Pharmacy@1234');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
@@ -17,10 +15,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const branches = [
-    { id: 'krn-branch-001', name: 'Karanthoor (Flagship)', code: 'KRN', num: '1' },
-    { id: 'clt-branch-002', name: 'Beach Road (Calicut City)', code: 'CLT', num: '2' },
-    { id: 'wyd-branch-003', name: 'Sulthan Bathery (Wayanad)', code: 'WYD', num: '3' },
-    { id: 'all',            name: 'Consolidated HQ (All 3 Branches)', code: 'HQ', num: '4' },
+    { id: 'krn-branch-001', name: 'Karanthoor Dispensary (Flagship)', code: 'KRN', num: '1' },
+    { id: 'clt-branch-002', name: 'Beach Road Pharmacy (Calicut)', code: 'CLT', num: '2' },
+    { id: 'wyd-branch-003', name: 'Sulthan Bathery Dispensary', code: 'WYD', num: '3' },
+    { id: 'all',            name: 'Central Warehouse / All Branches', code: 'HQ', num: '4' },
   ];
 
   const handleBranchSelect = (bId: string) => {
@@ -40,7 +38,7 @@ export default function LoginPage() {
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-        'Login failed. Please check your username and password, or use one of the quick demo accounts below.'
+        'Authentication failed. Please check your pharmacy credentials or select a quick demo role below.'
       );
     } finally {
       setLoading(false);
@@ -54,56 +52,68 @@ export default function LoginPage() {
   };
 
   const handleResetData = () => {
-    if (confirm('Reset clinic mock database back to initial demo seeds?')) {
+    if (confirm('Reset pharmacy and clinic mock database back to initial seeds?')) {
       resetDatabaseToDefaults();
-      setResetMessage('Database reset to initial demo seeds!');
+      setResetMessage('Pharmacy database reset to default inventory & batches!');
       setTimeout(() => setResetMessage(''), 2500);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] relative flex items-center justify-center p-4 overflow-hidden font-brand-sans">
-      {/* Background Decorative Motif Grid (fine golden-brown outlines from the brand image) */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.06] flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-[#F4FAF6] via-[#FAF7F2] to-[#EBF5EF] relative flex items-center justify-center p-4 overflow-hidden font-brand-sans">
+      {/* Background Decorative Pharmacy Motif */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.05] flex items-center justify-center">
         <div className="grid grid-cols-6 gap-12 rotate-[-6deg] scale-125">
           {Array.from({ length: 24 }).map((_, i) => (
-            <div key={i} className="w-16 h-28 border-2 border-[#965F36] rounded-full flex flex-col items-center justify-between p-2">
-              <div className="w-3 h-8 border border-[#965F36] rounded-full" />
-              <div className="w-3 h-8 border border-[#965F36] rounded-full" />
+            <div key={i} className="w-16 h-28 border-2 border-emerald-800 rounded-full flex flex-col items-center justify-between p-2">
+              <div className="w-3 h-8 border border-emerald-800 rounded-full" />
+              <div className="w-3 h-8 border border-emerald-800 rounded-full" />
             </div>
           ))}
         </div>
       </div>
 
-      <div className="relative z-10 bg-white rounded-3xl shadow-xl shadow-[#965F36]/10 w-full max-w-md p-8 sm:p-10 border border-[#EDE6DD]">
-        {/* Brand Header */}
+      <div className="relative z-10 bg-white rounded-3xl shadow-2xl shadow-emerald-900/10 w-full max-w-md p-8 sm:p-10 border border-emerald-100/80">
+        {/* Pharmacy Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-block mb-3">
-            <HealLogo size="lg" variant="dark" showSubtitle={true} />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold mb-3 shadow-2xs">
+            <Pill className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Dedicated Pharmacy Frontend (Port 3002)</span>
           </div>
 
-          <h2 className="font-brand-sans font-bold text-3xl text-[#1E1B18] tracking-tight mt-3">
-            Reveal Your Glow
-          </h2>
-          <p className="text-xs text-[#685B52] mt-1 font-medium">
-            Clinical Aesthetics · Daycare Lounges · Multi-Branch Management
+          <div className="flex items-center justify-center gap-2.5 my-1">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-600/30">
+              <FlaskConical className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">
+                HEAL PHARMACY
+              </h1>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-700 mt-0.5">
+                Dispensary & Inventory OS
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 mt-2 font-medium">
+            Prescription Fulfillment · Batch Inventory (FEFO) · Drug Master Control
           </p>
 
-          {/* Active Branch Portal Selector Card */}
-          <div className="mt-4 bg-[#FBF8F4] border border-[#EDE6DD] rounded-2xl p-3 text-left transition hover:border-[#D5C2B1]">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-[#685B52] mb-1.5">
-              <span className="flex items-center gap-1.5 text-[#965F36]">
-                <MapPin size={13} className="text-[#965F36]" />
-                Selected Branch Portal:
+          {/* Active Dispensary Branch Selector Card */}
+          <div className="mt-4 bg-[#F7FBF8] border border-emerald-100 rounded-2xl p-3 text-left transition hover:border-emerald-300">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 mb-1.5">
+              <span className="flex items-center gap-1.5 text-emerald-700">
+                <MapPin size={13} className="text-emerald-600" />
+                Active Dispensary Branch:
               </span>
-              <span className="bg-[#965F36] text-white text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+              <span className="bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
                 {activeBranch.branch_code || 'KRN'} · /{activeBranch.id === 'krn-branch-001' ? '1' : activeBranch.id === 'clt-branch-002' ? '2' : activeBranch.id === 'wyd-branch-003' ? '3' : '4'}
               </span>
             </div>
             <select
               value={activeBranch.id}
               onChange={(e) => handleBranchSelect(e.target.value)}
-              className="w-full bg-white border border-[#EDE6DD] rounded-xl px-3 py-1.5 text-xs font-bold text-[#1E1B18] focus:outline-none focus:ring-2 focus:ring-[#965F36] cursor-pointer"
+              className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
             >
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -115,7 +125,7 @@ export default function LoginPage() {
         </div>
 
         {resetMessage && (
-          <div className="bg-[#FFF8EE] border border-[#F6D3A8] text-[#965F36] text-xs rounded-xl p-2.5 mb-4 text-center font-semibold">
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl p-2.5 mb-4 text-center font-semibold">
             {resetMessage}
           </div>
         )}
@@ -130,8 +140,8 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-[#3B312A] mb-1 uppercase tracking-wider">
-              Username
+            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
+              Pharmacist Username
             </label>
             <input
               type="text"
@@ -139,13 +149,13 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               required
               autoFocus
-              placeholder="e.g. admin or dr.ananya"
-              className="w-full bg-[#FAF8F5] border border-[#EDE6DD] rounded-xl px-4 py-2.5 text-sm text-[#1E1B18] placeholder-[#A39487] focus:outline-none focus:ring-2 focus:ring-[#965F36] focus:bg-white transition"
+              placeholder="e.g. pharmacist"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#3B312A] mb-1 uppercase tracking-wider">
+            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
               Password
             </label>
             <input
@@ -154,79 +164,115 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
-              className="w-full bg-[#FAF8F5] border border-[#EDE6DD] rounded-xl px-4 py-2.5 text-sm text-[#1E1B18] placeholder-[#A39487] focus:outline-none focus:ring-2 focus:ring-[#965F36] focus:bg-white transition"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
             />
           </div>
 
-          {/* Authentic Warm Amber Pill Button (Matching "MORE INFO" in the uploaded brand image) */}
+          {/* Pharmacy Green Action Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#FAAE5A] hover:bg-[#E89D49] disabled:opacity-60 text-white font-bold py-3 px-6 rounded-full transition-all duration-200 text-xs uppercase tracking-widest shadow-md shadow-[#FAAE5A]/40 hover:shadow-lg hover:shadow-[#FAAE5A]/50 flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold py-3 px-6 rounded-full transition-all duration-200 text-xs uppercase tracking-widest shadow-md shadow-emerald-600/30 hover:shadow-lg hover:shadow-emerald-600/40 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
           >
             {loading ? 'Authenticating…' : (
               <>
-                <span>Sign In To Portal</span>
+                <span>Sign In To Pharmacy OS</span>
                 <ArrowRight size={14} />
               </>
             )}
           </button>
         </form>
 
-        {/* Quick Demo Credentials */}
-        <div className="mt-6 pt-5 border-t border-[#EDE6DD]">
-          <p className="text-[11px] font-bold text-[#8E7E73] uppercase tracking-wider mb-2.5 text-center">
-            One-Click Demo Roles
+        {/* Dedicated Pharmacy One-Click Demo Credentials */}
+        <div className="mt-6 pt-5 border-t border-slate-100">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 text-center flex items-center justify-center gap-1.5">
+            <Pill size={13} className="text-emerald-600" />
+            <span>Pharmacy Demo Personas</span>
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               type="button"
-              onClick={() => setDemoCredentials('admin', 'Admin@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              onClick={() => setDemoCredentials('pharmacist', 'Pharmacy@1234')}
+              className={`p-2.5 rounded-xl border transition text-left cursor-pointer ${
+                username === 'pharmacist'
+                  ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-400'
+                  : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 bg-white'
+              }`}
             >
-              👑 <span className="font-bold text-[#1E1B18]">Super Admin</span>
-              <div className="text-[10px] text-[#8E7E73]">admin</div>
+              <div className="flex items-center gap-1 font-bold text-slate-900">
+                <span>💊</span>
+                <span>Chief Pharmacist</span>
+              </div>
+              <div className="text-[10px] text-emerald-700 font-mono mt-0.5">pharmacist</div>
+              <div className="text-[9px] text-slate-400">Full Rx fulfillment & FEFO</div>
             </button>
+
             <button
               type="button"
-              onClick={() => setDemoCredentials('dr.ananya', 'Doctor@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              onClick={() => setDemoCredentials('pharmacy.dispensary', 'Pharmacy@1234')}
+              className={`p-2.5 rounded-xl border transition text-left cursor-pointer ${
+                username === 'pharmacy.dispensary'
+                  ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-400'
+                  : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 bg-white'
+              }`}
             >
-              🩺 <span className="font-bold text-[#1E1B18]">Dr. Ananya</span>
-              <div className="text-[10px] text-[#8E7E73]">dr.ananya</div>
+              <div className="flex items-center gap-1 font-bold text-slate-900">
+                <span>📦</span>
+                <span>Dispensary Counter</span>
+              </div>
+              <div className="text-[10px] text-emerald-700 font-mono mt-0.5">pharmacy.dispensary</div>
+              <div className="text-[9px] text-slate-400">Counter token dispensing</div>
             </button>
+
             <button
               type="button"
-              onClick={() => setDemoCredentials('reception', 'Reception@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              onClick={() => setDemoCredentials('pharmacy.inventory', 'Pharmacy@1234')}
+              className={`p-2.5 rounded-xl border transition text-left cursor-pointer ${
+                username === 'pharmacy.inventory'
+                  ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-400'
+                  : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 bg-white'
+              }`}
             >
-              📋 <span className="font-bold text-[#1E1B18]">Reception</span>
-              <div className="text-[10px] text-[#8E7E73]">reception</div>
+              <div className="flex items-center gap-1 font-bold text-slate-900">
+                <span>📊</span>
+                <span>Inventory & PO</span>
+              </div>
+              <div className="text-[10px] text-emerald-700 font-mono mt-0.5">pharmacy.inventory</div>
+              <div className="text-[9px] text-slate-400">Stock transfers & expiry</div>
             </button>
+
             <button
               type="button"
-              onClick={() => setDemoCredentials('cashier', 'Cashier@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              onClick={() => setDemoCredentials('pharmacy.admin', 'Pharmacy@1234')}
+              className={`p-2.5 rounded-xl border transition text-left cursor-pointer ${
+                username === 'pharmacy.admin'
+                  ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-400'
+                  : 'border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40 bg-white'
+              }`}
             >
-              💳 <span className="font-bold text-[#1E1B18]">Cashier POS</span>
-              <div className="text-[10px] text-[#8E7E73]">cashier</div>
+              <div className="flex items-center gap-1 font-bold text-slate-900">
+                <span>👑</span>
+                <span>Pharmacy Admin</span>
+              </div>
+              <div className="text-[10px] text-emerald-700 font-mono mt-0.5">pharmacy.admin</div>
+              <div className="text-[9px] text-slate-400">Master pricing & catalogue</div>
             </button>
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-[#8E7E73] mt-4 leading-relaxed">
-          ✨ Supports live multi-tab sync across branches <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/1</code>, <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/2</code>, <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/3</code>, <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/4</code>
+        <p className="text-center text-[11px] text-slate-400 mt-4 leading-relaxed">
+          🌿 Dedicated to Pharmacy Dispensary, FEFO Batch Dispensing, and Drug Catalogs on <code className="bg-emerald-50 px-1.5 py-0.5 rounded text-emerald-800 font-bold">Port 3002</code>
         </p>
 
         {/* Reset Demo Data button */}
-        <div className="mt-4 pt-3 border-t border-[#EDE6DD] text-center">
+        <div className="mt-4 pt-3 border-t border-slate-100 text-center">
           <button
             type="button"
             onClick={handleResetData}
-            className="inline-flex items-center gap-1.5 text-[11px] text-[#8E7E73] hover:text-[#965F36] transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-emerald-700 transition cursor-pointer"
           >
             <RotateCcw className="w-3 h-3" />
-            Reset Demo Database
+            Reset Pharmacy Database
           </button>
         </div>
       </div>

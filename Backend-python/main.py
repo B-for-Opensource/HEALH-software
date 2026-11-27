@@ -1,15 +1,18 @@
 import sys
+import json
 from datetime import datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
 from config import settings
 from database import engine, Base, SessionLocal
+import models
 from seed import seed_database
+from realtime import ws_manager
 
 # Import routers
 from routers import (
@@ -28,7 +31,14 @@ from routers import (
     staff,
     departments,
     photos,
-    hrms
+    hrms,
+    encounters,
+    lab,
+    imaging,
+    pharmacy,
+    nursing,
+    patient_portal,
+    finance,
 )
 
 @asynccontextmanager
@@ -118,6 +128,43 @@ app.include_router(staff.router)
 app.include_router(departments.router)
 app.include_router(photos.router)
 app.include_router(hrms.router)
+app.include_router(encounters.router)
+app.include_router(lab.router)
+app.include_router(imaging.router)
+app.include_router(pharmacy.router)
+app.include_router(nursing.router)
+app.include_router(patient_portal.router)
+app.include_router(finance.router)
+
+@app.websocket("/ws/pipeline")
+async def pipeline_websocket(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+
+@app.get("/api/pipeline/sync")
+def sync_pipeline_pull():
+    """Live DB-backed pipeline snapshot (no longer uses pipeline_cache.json as source of truth)."""
+    db = SessionLocal()
+    try:
+        appts = db.query(models.Appointment).all()
+        encounters = db.query(models.Encounter).all()
+        return {
+            "status": "ok",
+            "source": "database",
+            "appointments": [{
+                "id": a.id, "token_no": a.token_no, "patient_id": a.patient_id,
+                "doctor_id": a.doctor_id, "status": a.status,
+                "appointment_date": a.appointment_date.isoformat() if a.appointment_date else None,
+            } for a in appts],
+            "encounters_count": len(encounters),
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    finally:
+        db.close()
 
 @app.get("/")
 def root():

@@ -1,8 +1,24 @@
+from datetime import date, datetime, timedelta
+import json
 from sqlalchemy.orm import Session
 import models
 from auth import hash_password
 
 def seed_database(db: Session):
+    # 0. Seed Organisation (Tenant)
+    try:
+        if db.query(models.Organisation).count() == 0:
+            org = models.Organisation(
+                id="org-heal-001",
+                name="HEALESTHETIC Healthcare Group",
+                code="HEAL",
+                subscription_plan="Enterprise"
+            )
+            db.add(org)
+            db.commit()
+    except Exception:
+        db.rollback()
+
     # 1. Seed Branches
     try:
         if db.query(models.Branch).count() == 0:
@@ -49,6 +65,7 @@ def seed_database(db: Session):
                 models.Department(id="dept-laser", name="Laser & Aesthetic Daycare", code="LASER", description="Diode, Q-switch and CO2 laser treatments"),
                 models.Department(id="dept-tri", name="Trichology & Hair Restoration", code="TRI", description="Hair loss treatments, PRP, and scalp therapy"),
                 models.Department(id="dept-nutr", name="Wellness & Nutrition", code="NUTR", description="Dietetics, weight management, and lifestyle counseling"),
+                models.Department(id="dept-pharm", name="Pharmacy & Dispensary", code="PHARM", description="In-house retail pharmacy, dispensary, and FEFO inventory"),
             ]
             db.add_all(departments)
             db.commit()
@@ -109,6 +126,26 @@ def seed_database(db: Session):
                 )
             ]
             db.add_all(docs)
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    # 4b. Seed Dedicated Pharmacy Personnel
+    try:
+        pharm = db.query(models.Staff).filter(models.Staff.username == "pharmacist").first()
+        if not pharm:
+            default_pharm = models.Staff(
+                id="staff-pharm-001",
+                branch_id="krn-branch-001",
+                department_id="dept-pharm",
+                username="pharmacist",
+                password_hash=hash_password("Pharmacy@1234"),
+                full_name="Alex Mathew (Chief Pharmacist)",
+                role="Pharmacist",
+                phone="9876543220",
+                email="pharmacist@healclinic.in"
+            )
+            db.add(default_pharm)
             db.commit()
     except Exception:
         db.rollback()
@@ -301,6 +338,145 @@ def seed_database(db: Session):
                 )
             ]
             db.add_all(leaves)
+            db.commit()
+    except Exception:
+        db.rollback()
+
+
+    # 11. Seed Role Staff (Nurse, Reception, Cashier, Lab Tech, Radiologist, Pharmacist)
+    try:
+        role_users = [
+            ("staff-nurse-001", "nurse", "Nurse@1234", "Anjali Pillai", "Nurse", "9876543220", "nurse@healesthetic.in"),
+            ("staff-rec-001", "reception", "Reception@1234", "Meera Nair", "Receptionist", "9876543221", "reception@healesthetic.in"),
+            ("staff-cash-001", "cashier", "Cashier@1234", "Rohan Das", "Cashier", "9876543222", "cashier@healesthetic.in"),
+            ("staff-lab-001", "labtech", "Lab@1234", "Dr. Kavya Menon (Pathology)", "Lab Technician", "9876543223", "lab@healesthetic.in"),
+            ("staff-rad-001", "radiologist", "Radio@1234", "Dr. Vivek Varma (Radiology)", "Radiologist", "9876543224", "radiology@healesthetic.in"),
+            ("staff-pharm-001", "pharmacist", "Pharma@1234", "Nikhil Krishnan", "Pharmacist", "9876543225", "pharmacy@healesthetic.in"),
+        ]
+        for uid, uname, pwd, fname, role, phone, email in role_users:
+            if not db.query(models.Staff).filter(models.Staff.username == uname).first():
+                db.add(models.Staff(
+                    id=uid,
+                    organisation_id="org-heal-001",
+                    branch_id="krn-branch-001",
+                    department_id="dept-gen",
+                    username=uname,
+                    password_hash=hash_password(pwd),
+                    full_name=fname,
+                    role=role,
+                    phone=phone,
+                    email=email,
+                ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    # 12. Seed Lab & Imaging Master Services
+    try:
+        if db.query(models.LabServiceMaster).count() == 0:
+            db.add_all([
+                models.LabServiceMaster(
+                    id="lab-srv-cbc", organisation_id="org-heal-001", test_code="LAB-CBC",
+                    test_name="Complete Blood Count (CBC)", category="Hematology", sample_type="EDTA Whole Blood",
+                    parameters_json=json.dumps([
+                        {"name": "Hemoglobin", "unit": "g/dL", "ref_range": "12.0 - 16.0"},
+                        {"name": "WBC Count", "unit": "cells/mcL", "ref_range": "4,000 - 11,000"},
+                        {"name": "Platelets", "unit": "lakhs/mcL", "ref_range": "1.5 - 4.5"},
+                    ]),
+                    default_price=450.0, gst_percent=0.0
+                ),
+                models.LabServiceMaster(
+                    id="lab-srv-lft", organisation_id="org-heal-001", test_code="LAB-LFT",
+                    test_name="Liver Function Test (LFT)", category="Biochemistry", sample_type="Serum",
+                    parameters_json=json.dumps([
+                        {"name": "SGOT (AST)", "unit": "U/L", "ref_range": "5 - 40"},
+                        {"name": "SGPT (ALT)", "unit": "U/L", "ref_range": "7 - 56"},
+                        {"name": "Total Bilirubin", "unit": "mg/dL", "ref_range": "0.1 - 1.2"},
+                    ]),
+                    default_price=750.0, gst_percent=0.0
+                ),
+                models.LabServiceMaster(
+                    id="lab-srv-hba1c", organisation_id="org-heal-001", test_code="LAB-HBA1C",
+                    test_name="HbA1c (Glycated Hemoglobin)", category="Biochemistry", sample_type="EDTA Whole Blood",
+                    parameters_json=json.dumps([
+                        {"name": "HbA1c", "unit": "%", "ref_range": "4.0 - 5.6"},
+                    ]),
+                    default_price=600.0, gst_percent=0.0
+                ),
+            ])
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    try:
+        if db.query(models.ImagingServiceMaster).count() == 0:
+            db.add_all([
+                models.ImagingServiceMaster(
+                    id="img-srv-xray-chest", organisation_id="org-heal-001", service_code="IMG-XRAY-01",
+                    service_name="Chest X-Ray PA View", modality="X-Ray", default_room="Room 104 (Radiology)",
+                    default_price=600.0, gst_percent=0.0
+                ),
+                models.ImagingServiceMaster(
+                    id="img-srv-mri-brain", organisation_id="org-heal-001", service_code="IMG-MRI-01",
+                    service_name="Brain MRI (T1/T2 Plain)", modality="MRI", default_room="Room 108 (MRI Suite)",
+                    default_price=5500.0, gst_percent=0.0
+                ),
+                models.ImagingServiceMaster(
+                    id="img-srv-usg-abd", organisation_id="org-heal-001", service_code="IMG-USG-01",
+                    service_name="Ultrasound Abdomen & Pelvis", modality="Ultrasound", default_room="Room 106 (USG)",
+                    default_price=1400.0, gst_percent=0.0
+                ),
+            ])
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    # 13. Seed Suppliers & Pharmacy Batches
+    try:
+        if db.query(models.Supplier).count() == 0:
+            db.add(models.Supplier(
+                id="sup-001", organisation_id="org-heal-001", name="MedPlus Pharma Distributors",
+                gstin="32AABCM1234F1Z5", phone="0495-2441100", email="orders@medplusdist.in"
+            ))
+            db.commit()
+        if db.query(models.PharmacyBatch).count() == 0:
+            meds = db.query(models.Medicine).limit(6).all()
+            for idx, m in enumerate(meds):
+                db.add(models.PharmacyBatch(
+                    id=f"batch-seed-{idx+1}",
+                    organisation_id="org-heal-001",
+                    branch_id="krn-branch-001",
+                    medicine_id=m.id,
+                    medicine_name=m.name,
+                    salt_name=m.generic_name,
+                    batch_no=f"HL26-{101+idx}",
+                    expiry_date=date.today() + timedelta(days=180 + idx * 60),
+                    quantity_available=120,
+                    purchase_rate=45.0,
+                    mrp=85.0 + idx * 15,
+                    gst_percent=12.0,
+                    is_schedule_h1=(idx % 3 == 0),
+                ))
+            db.commit()
+    except Exception:
+        db.rollback()
+
+    # 14. Seed Sample Patients & Initial Encounter
+    try:
+        if db.query(models.Patient).count() == 0:
+            p1 = models.Patient(
+                id="pat-seed-001", organisation_id="org-heal-001", branch_id="krn-branch-001",
+                op_no="A00101", first_name="Aisha", last_name="Rahman",
+                phone="9847011223", date_of_birth=date(1995, 5, 14), age_years=31,
+                gender="Female", blood_group="O+", created_source="RECEPTION"
+            )
+            p2 = models.Patient(
+                id="pat-seed-002", organisation_id="org-heal-001", branch_id="krn-branch-001",
+                op_no="A00102", first_name="Rahul", last_name="Menon",
+                phone="9847099887", date_of_birth=date(1988, 11, 2), age_years=38,
+                gender="Male", blood_group="B+", created_source="RECEPTION"
+            )
+            db.add_all([p1, p2])
             db.commit()
     except Exception:
         db.rollback()

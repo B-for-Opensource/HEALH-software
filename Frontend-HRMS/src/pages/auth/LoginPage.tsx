@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { authApi, resetDatabaseToDefaults, mockBranchService } from '@/api';
-import HealLogo from '@/components/shared/HealLogo';
-import AppSwitcher from '@/components/shared/AppSwitcher';
-import { ShieldCheck, RotateCcw, MapPin, Sparkles, ArrowRight, Users } from 'lucide-react';
+import { ShieldCheck, RotateCcw, MapPin, Sparkles, ArrowRight, Users, Briefcase, UserCheck } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('admin');
@@ -62,48 +60,48 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] relative flex items-center justify-center p-4 overflow-hidden font-brand-sans">
-      {/* Background Decorative Motif Grid (fine golden-brown outlines from the brand image) */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.06] flex items-center justify-center">
-        <div className="grid grid-cols-6 gap-12 rotate-[-6deg] scale-125">
-          {Array.from({ length: 24 }).map((_, i) => (
-            <div key={i} className="w-16 h-28 border-2 border-[#965F36] rounded-full flex flex-col items-center justify-between p-2">
-              <div className="w-3 h-8 border border-[#965F36] rounded-full" />
-              <div className="w-3 h-8 border border-[#965F36] rounded-full" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="relative z-10 bg-white rounded-3xl shadow-xl shadow-[#965F36]/10 w-full max-w-md p-8 sm:p-10 border border-[#EDE6DD]">
+    <div className="min-h-screen bg-gradient-to-br from-[#F5F8FC] via-[#FAF7F2] to-[#EEF2F9] relative flex items-center justify-center p-4 overflow-hidden font-brand-sans">
+      <div className="relative z-10 bg-white rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-md p-8 sm:p-10 border border-blue-100">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-block mb-3">
-            <HealLogo size="lg" variant="dark" showSubtitle={true} />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold mb-3 shadow-2xs">
+            <Users className="w-3.5 h-3.5 text-blue-600" />
+            <span>Dedicated HRMS Frontend (Port 3001)</span>
           </div>
 
-          <h2 className="font-brand-sans font-bold text-3xl text-[#1E1B18] tracking-tight mt-3">
-            Reveal Your Glow
-          </h2>
-          <p className="text-xs text-[#685B52] mt-1 font-medium">
-            Clinical Aesthetics · Daycare Lounges · Multi-Branch Management
+          <div className="flex items-center justify-center gap-2.5 my-1">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-bold shadow-md shadow-blue-600/30">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">
+                HEAL HRMS
+              </h1>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-blue-700 mt-0.5">
+                Workforce & Staff Suite
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 mt-2 font-medium">
+            Doctor Rosters · Biometric Attendance · Leave & Payroll Governance
           </p>
 
           {/* Active Branch Portal Selector Card */}
-          <div className="mt-4 bg-[#FBF8F4] border border-[#EDE6DD] rounded-2xl p-3 text-left transition hover:border-[#D5C2B1]">
-            <div className="flex items-center justify-between text-[11px] font-semibold text-[#685B52] mb-1.5">
-              <span className="flex items-center gap-1.5 text-[#965F36]">
-                <MapPin size={13} className="text-[#965F36]" />
-                Selected Branch Portal:
+          <div className="mt-4 bg-[#F8FAFC] border border-blue-100 rounded-2xl p-3 text-left transition hover:border-blue-300">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 mb-1.5">
+              <span className="flex items-center gap-1.5 text-blue-700">
+                <MapPin size={13} className="text-blue-600" />
+                Selected Branch:
               </span>
-              <span className="bg-[#965F36] text-white text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
+              <span className="bg-blue-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">
                 {activeBranch.branch_code || 'KRN'} · /{activeBranch.id === 'krn-branch-001' ? '1' : activeBranch.id === 'clt-branch-002' ? '2' : activeBranch.id === 'wyd-branch-003' ? '3' : '4'}
               </span>
             </div>
             <select
               value={activeBranch.id}
               onChange={(e) => handleBranchSelect(e.target.value)}
-              className="w-full bg-white border border-[#EDE6DD] rounded-xl px-3 py-1.5 text-xs font-bold text-[#1E1B18] focus:outline-none focus:ring-2 focus:ring-[#965F36] cursor-pointer"
+              className="w-full bg-white border border-blue-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
             >
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -115,7 +113,7 @@ export default function LoginPage() {
         </div>
 
         {resetMessage && (
-          <div className="bg-[#FFF8EE] border border-[#F6D3A8] text-[#965F36] text-xs rounded-xl p-2.5 mb-4 text-center font-semibold">
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs rounded-xl p-2.5 mb-4 text-center font-semibold">
             {resetMessage}
           </div>
         )}
@@ -130,7 +128,7 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-[#3B312A] mb-1 uppercase tracking-wider">
+            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
               Username
             </label>
             <input
@@ -139,13 +137,13 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               required
               autoFocus
-              placeholder="e.g. admin or dr.ananya"
-              className="w-full bg-[#FAF8F5] border border-[#EDE6DD] rounded-xl px-4 py-2.5 text-sm text-[#1E1B18] placeholder-[#A39487] focus:outline-none focus:ring-2 focus:ring-[#965F36] focus:bg-white transition"
+              placeholder="e.g. admin or emma.watson"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#3B312A] mb-1 uppercase tracking-wider">
+            <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
               Password
             </label>
             <input
@@ -154,19 +152,18 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
-              className="w-full bg-[#FAF8F5] border border-[#EDE6DD] rounded-xl px-4 py-2.5 text-sm text-[#1E1B18] placeholder-[#A39487] focus:outline-none focus:ring-2 focus:ring-[#965F36] focus:bg-white transition"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition"
             />
           </div>
 
-          {/* Authentic Warm Amber Pill Button (Matching "MORE INFO" in the uploaded brand image) */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#FAAE5A] hover:bg-[#E89D49] disabled:opacity-60 text-white font-bold py-3 px-6 rounded-full transition-all duration-200 text-xs uppercase tracking-widest shadow-md shadow-[#FAAE5A]/40 hover:shadow-lg hover:shadow-[#FAAE5A]/50 flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-3 px-6 rounded-full transition-all duration-200 text-xs uppercase tracking-widest shadow-md shadow-blue-600/30 hover:shadow-lg hover:shadow-blue-600/40 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
           >
             {loading ? 'Authenticating…' : (
               <>
-                <span>Sign In To Portal</span>
+                <span>Sign In To HRMS</span>
                 <ArrowRight size={14} />
               </>
             )}
@@ -174,59 +171,56 @@ export default function LoginPage() {
         </form>
 
         {/* Quick Demo Credentials */}
-        <div className="mt-6 pt-5 border-t border-[#EDE6DD]">
-          <p className="text-[11px] font-bold text-[#8E7E73] uppercase tracking-wider mb-2.5 text-center">
-            One-Click Demo Roles
+        <div className="mt-6 pt-5 border-t border-slate-100">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 text-center flex items-center justify-center gap-1.5">
+            <UserCheck size={13} className="text-blue-600" />
+            <span>HRMS Demo Roles</span>
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               type="button"
               onClick={() => setDemoCredentials('admin', 'Admin@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-800 font-medium transition text-left cursor-pointer"
             >
-              👑 <span className="font-bold text-[#1E1B18]">Super Admin</span>
-              <div className="text-[10px] text-[#8E7E73]">admin</div>
+              👑 <span className="font-bold text-slate-900">HR Director</span>
+              <div className="text-[10px] text-slate-500">admin</div>
             </button>
             <button
               type="button"
               onClick={() => setDemoCredentials('dr.ananya', 'Doctor@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-800 font-medium transition text-left cursor-pointer"
             >
-              🩺 <span className="font-bold text-[#1E1B18]">Dr. Ananya</span>
-              <div className="text-[10px] text-[#8E7E73]">dr.ananya</div>
+              🩺 <span className="font-bold text-slate-900">Medical Supt.</span>
+              <div className="text-[10px] text-slate-500">dr.ananya</div>
             </button>
             <button
               type="button"
               onClick={() => setDemoCredentials('reception', 'Reception@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-800 font-medium transition text-left cursor-pointer"
             >
-              📋 <span className="font-bold text-[#1E1B18]">Reception</span>
-              <div className="text-[10px] text-[#8E7E73]">reception</div>
+              📋 <span className="font-bold text-slate-900">Front Desk Lead</span>
+              <div className="text-[10px] text-slate-500">reception</div>
             </button>
             <button
               type="button"
               onClick={() => setDemoCredentials('cashier', 'Cashier@1234')}
-              className="p-2.5 rounded-xl border border-[#EDE6DD] hover:border-[#FAAE5A] hover:bg-[#FFF8EE] text-[#3B312A] font-medium transition text-left cursor-pointer"
+              className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-800 font-medium transition text-left cursor-pointer"
             >
-              💳 <span className="font-bold text-[#1E1B18]">Cashier POS</span>
-              <div className="text-[10px] text-[#8E7E73]">cashier</div>
+              💳 <span className="font-bold text-slate-900">Finance & Payroll</span>
+              <div className="text-[10px] text-slate-500">cashier</div>
             </button>
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-[#8E7E73] mt-4 leading-relaxed">
-          ✨ Supports live multi-tab sync across branches <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/1</code>, <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/2</code>, <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/3</code>, <code className="bg-[#F4ECE3] px-1.5 py-0.5 rounded text-[#965F36] font-bold">/4</code>
-        </p>
-
         {/* Reset Demo Data button */}
-        <div className="mt-4 pt-3 border-t border-[#EDE6DD] text-center">
+        <div className="mt-4 pt-3 border-t border-slate-100 text-center">
           <button
             type="button"
             onClick={handleResetData}
-            className="inline-flex items-center gap-1.5 text-[11px] text-[#8E7E73] hover:text-[#965F36] transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-blue-700 transition cursor-pointer"
           >
             <RotateCcw className="w-3 h-3" />
-            Reset Demo Database
+            Reset HR Database
           </button>
         </div>
       </div>

@@ -17,6 +17,18 @@ export default function BillingReportPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  // HMS-style filter states
+  const [reportType, setReportType] = useState('Summary');
+  const [reportDate, setReportDate] = useState('Today');
+  const [fromDate, setFromDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [reportReceptionist, setReportReceptionist] = useState('(All)');
+  const [reportDoctor, setReportDoctor] = useState('(All)');
+  const [timeFrom, setTimeFrom] = useState('00:00');
+  const [timeTo, setTimeTo] = useState('23:59');
+  const [noFrom, setNoFrom] = useState('');
+  const [noTo, setNoTo] = useState('');
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -71,20 +83,99 @@ export default function BillingReportPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Billing & GST Tax Audit Report
+            Billing &amp; GST Tax Audit Report
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Departmental sales breakdown, CGST/SGST tax reconciliation & revenue realization
+            Departmental sales breakdown, CGST/SGST tax reconciliation &amp; revenue realization
           </p>
         </div>
+      </div>
 
-        <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold shadow-xs"
-        >
-          <Printer className="w-4 h-4" />
-          Print Audit Report
-        </button>
+      {/* HMS-style Filter Panel */}
+      <div className="bg-white border border-slate-300 rounded-lg shadow-xs">
+        <div className="bg-slate-100 border-b border-slate-300 px-4 py-2 rounded-t-lg">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Report Filter</span>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Type</label>
+              <select value={reportType} onChange={e => setReportType(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[140px]">
+                <option>Summary</option><option>Detailed</option><option>Item Wise</option>
+                <option>Doctor Wise</option><option>Doctor Summary</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Date</label>
+              <select value={reportDate} onChange={e => setReportDate(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[90px]">
+                <option>Today</option><option>Yesterday</option><option>This Week</option>
+                <option>This Month</option><option>Custom</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">From</label>
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">To</label>
+              <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Receptionist</label>
+              <select value={reportReceptionist} onChange={e => setReportReceptionist(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[130px]">
+                <option>(All)</option><option>RECEPTION STAFF</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Doctor</label>
+              <select value={reportDoctor} onChange={e => setReportDoctor(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[200px]">
+                <option>(All)</option><option>ARUN PRAKASH</option><option>SWATHIGHA SUDHEER .K</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Time</label>
+              <div className="flex items-center gap-1">
+                <input type="time" value={timeFrom} onChange={e => setTimeFrom(e.target.value)}
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[85px]" />
+                <span className="text-xs text-slate-500">to</span>
+                <input type="time" value={timeTo} onChange={e => setTimeTo(e.target.value)}
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[85px]" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">No</label>
+              <div className="flex items-center gap-1">
+                <input type="text" value={noFrom} onChange={e => setNoFrom(e.target.value)} placeholder="From"
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[60px]" />
+                <span className="text-xs text-slate-500">to</span>
+                <input type="text" value={noTo} onChange={e => setNoTo(e.target.value)} placeholder="To"
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[60px]" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-slate-200 bg-slate-50 px-4 py-2 flex items-center gap-2 rounded-b-lg">
+          <button onClick={loadData}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-1.5 rounded shadow-xs">
+            View
+          </button>
+          <button onClick={() => window.print()}
+            className="bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold px-5 py-1.5 rounded shadow-xs flex items-center gap-1">
+            <Printer className="w-3 h-3" /> Print
+          </button>
+          <button onClick={() => window.history.back()}
+            className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-5 py-1.5 rounded shadow-xs">
+            Exit
+          </button>
+        </div>
       </div>
 
       {/* Tax & Financial Summary Cards */}

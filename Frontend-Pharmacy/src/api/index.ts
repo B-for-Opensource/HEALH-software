@@ -1,3 +1,4 @@
+import { apiRequest } from './httpClient';
 import {
   mockAuthService,
   mockPatientsService,
@@ -27,6 +28,8 @@ import {
   importDatabaseJson,
 } from '@/lib/mockDb';
 
+const IS_DEMO_MODE = (import.meta as any).env?.VITE_DEMO_MODE === 'true';
+
 export {
   resetDatabaseToDefaults,
   getDb,
@@ -39,12 +42,18 @@ export {
 
 // ----- PATIENTS -----
 export const patientsApi = {
-  list:    (params?: Record<string, any>): Promise<any> => mockPatientsService.list(params),
-  search:  (q: string): Promise<any>                    => mockPatientsService.search(q),
-  get:     (id: string): Promise<any>                   => mockPatientsService.get(id),
-  history: (id: string): Promise<any>                   => mockPatientsService.history(id),
-  create:  (data: unknown): Promise<any>                => mockPatientsService.create(data),
-  update:  (id: string, data: unknown): Promise<any>    => mockPatientsService.update(id, data),
+  list:    (params?: Record<string, any>): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.list(params) : apiRequest(`/api/patients${params?.search ? `?search=${encodeURIComponent(params.search)}` : ''}`),
+  search:  (q: string): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.search(q) : apiRequest(`/api/patients/search?q=${encodeURIComponent(q)}`),
+  get:     (id: string): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.get(id) : apiRequest(`/api/patients/${id}`),
+  history: (id: string): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.history(id) : apiRequest(`/api/patients/${id}/history`),
+  create:  (data: unknown): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.create(data) : apiRequest('/api/patients', { method: 'POST', body: JSON.stringify(data) }),
+  update:  (id: string, data: unknown): Promise<any> =>
+    IS_DEMO_MODE ? mockPatientsService.update(id, data) : apiRequest(`/api/patients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 };
 
 // ----- APPOINTMENTS -----
@@ -113,11 +122,25 @@ export const photoApi = {
   add:  (data: any): Promise<any> => mockPhotoService.add(data),
 };
 
-// ----- PHARMACY & DISPENSARY -----
+// ----- PHARMACY & DISPENSARY (Live FastAPI) -----
 export const pharmacyApi = {
-  listBatches: (): Promise<any>               => mockPharmacyService.listBatches(),
-  addBatch:    (data: any): Promise<any>       => mockPharmacyService.addBatch(data),
-  dispenseRx:  (batchId: string, qty: number): Promise<any> => mockPharmacyService.dispenseRx(batchId, qty),
+  prescriptions: (status?: string): Promise<any> =>
+    IS_DEMO_MODE ? Promise.resolve([]) : apiRequest(`/api/pharmacy/prescriptions${status ? `?status=${status}` : ''}`),
+  batches: (): Promise<any> =>
+    IS_DEMO_MODE ? mockPharmacyService.listBatches() : apiRequest('/api/pharmacy/batches'),
+  addBatch: (data: any): Promise<any> =>
+    IS_DEMO_MODE ? mockPharmacyService.addBatch(data) : apiRequest('/api/pharmacy/batches', { method: 'POST', body: JSON.stringify(data) }),
+  dispense: (data: any): Promise<any> =>
+    IS_DEMO_MODE ? mockPharmacyService.dispenseRx(data?.items?.[0]?.batch_id, data?.items?.[0]?.dispense_qty) : apiRequest('/api/pharmacy/dispense', { method: 'POST', body: JSON.stringify(data) }),
+  stockMovements: (): Promise<any> => apiRequest('/api/pharmacy/stock-movements'),
+  purchaseOrders: (): Promise<any> => apiRequest('/api/pharmacy/purchase-orders'),
+  createPO: (data: any): Promise<any> => apiRequest('/api/pharmacy/purchase-orders', { method: 'POST', body: JSON.stringify(data) }),
+  expiryReturns: (): Promise<any> => apiRequest('/api/pharmacy/expiry-returns'),
+  // compatibility helpers
+  listBatches: (): Promise<any> =>
+    IS_DEMO_MODE ? mockPharmacyService.listBatches() : apiRequest('/api/pharmacy/batches'),
+  dispenseRx: (batchId: string, qty: number): Promise<any> =>
+    IS_DEMO_MODE ? mockPharmacyService.dispenseRx(batchId, qty) : apiRequest('/api/pharmacy/dispense', { method: 'POST', body: JSON.stringify({ items: [{ batch_id: batchId, dispense_qty: qty }] }) }),
 };
 
 // ----- PROCUREMENT & INVENTORY -----

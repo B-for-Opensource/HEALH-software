@@ -63,6 +63,20 @@ export interface Appointment {
     | 'No-Show'
     | string;
   token_printed: boolean;
+  vitals?: {
+    bp_systolic?: string | number;
+    bp_diastolic?: string | number;
+    pulse_rate?: string | number;
+    temperature_f?: string | number;
+    spo2_percent?: string | number;
+    weight_kg?: string | number;
+    height_cm?: string | number;
+    bmi?: string | number;
+    blood_group?: string;
+    blood_sugar?: string;
+    notes?: string;
+  };
+  vitals_recorded_by?: string;
   created_at: string;
 }
 

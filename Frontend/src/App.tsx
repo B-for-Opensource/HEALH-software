@@ -12,6 +12,7 @@ import AppointmentCalendarPage from '@/pages/reception/AppointmentCalendarPage';
 import FollowUpQueuePage from '@/pages/reception/FollowUpQueuePage';
 import DoctorWorkbenchPage from '@/pages/clinical/DoctorWorkbenchPage';
 import LabOrdersPage from '@/pages/lab/LabOrdersPage';
+import ImagingOrdersPage from '@/pages/clinical/ImagingOrdersPage';
 import PackagesPage from '@/pages/aesthetic/PackagesPage';
 import PhotoVaultPage from '@/pages/aesthetic/PhotoVaultPage';
 import DaycareLoungePage from '@/pages/daycare/DaycareLoungePage';
@@ -81,6 +82,7 @@ export default function App() {
             <Route path="/clinical/workbench"         element={<DoctorWorkbenchPage />} />
             <Route path="/clinical/workbench/:apptId" element={<DoctorWorkbenchPage />} />
             <Route path="/clinical/lab"               element={<LabOrdersPage />} />
+            <Route path="/clinical/imaging"           element={<ImagingOrdersPage />} />
 
             {/* 3. Aesthetic Care */}
             <Route path="/aesthetic/packages"         element={<PackagesPage />} />

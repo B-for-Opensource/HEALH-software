@@ -106,6 +106,12 @@ export function getDb(): MockDatabase {
         updated = true;
       }
     }
+    // Ensure dedicated pharmacy staff accounts exist
+    if (parsed.staff && !parsed.staff.some((s: any) => s.username === 'pharmacist')) {
+      const pharmStaff = defaultDb.staff.filter((s: any) => s.username?.startsWith('pharm') || s.username === 'pharmacist');
+      parsed.staff = [...parsed.staff, ...pharmStaff];
+      updated = true;
+    }
     if (updated) {
       localStorage.setItem(DB_KEY, JSON.stringify(parsed));
     }
@@ -159,9 +165,41 @@ export function saveDb(db: MockDatabase): void {
     if (broadcastChannel) {
       broadcastChannel.postMessage({ type: 'DB_MUTATED', timestamp: Date.now() });
     }
+    // Live cross-frontend sync to backend (Ports 3000, 3001, 3002)
+    if (typeof window !== 'undefined') {
+      fetch('http://localhost:8000/api/pipeline/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appointments: db.appointments || [],
+          patients: db.patients || [],
+          prescriptions: db.prescriptions || [],
+          consultations: db.consultations || [],
+        }),
+      }).catch(() => {});
+    }
   } catch (err) {
     console.error('Error saving mock database to localStorage', err);
   }
+}
+
+// Initial sync on module load
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    try {
+      const initial = getDb();
+      fetch('http://localhost:8000/api/pipeline/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appointments: initial.appointments || [],
+          patients: initial.patients || [],
+          prescriptions: initial.prescriptions || [],
+          consultations: initial.consultations || [],
+        }),
+      }).catch(() => {});
+    } catch (e) {}
+  }, 300);
 }
 
 export function resetDatabaseToDefaults(): MockDatabase {

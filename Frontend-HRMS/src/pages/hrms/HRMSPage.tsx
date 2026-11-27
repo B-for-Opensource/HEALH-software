@@ -70,6 +70,22 @@ export default function HRMSPage() {
 
   const [punchLoading, setPunchLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ msg: string; type: string } | null>(null);
+  const [showStaffDetails, setShowStaffDetails] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('HEAL_SHOW_STAFF_DETAILS') === 'true';
+    }
+    return false;
+  });
+
+  const handleToggleStaffDetails = (val?: boolean) => {
+    setShowStaffDetails((prev) => {
+      const next = typeof val === 'boolean' ? val : !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('HEAL_SHOW_STAFF_DETAILS', String(next));
+      }
+      return next;
+    });
+  };
 
   const showToast = (msg: string, type = 'success') => {
     setToastMessage({ msg, type });
@@ -497,6 +513,8 @@ export default function HRMSPage() {
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
         onResetData={handleResetData}
+        showStaffDetails={showStaffDetails}
+        setShowStaffDetails={handleToggleStaffDetails}
       />
 
       {/* Main HRMS Tab Content Area */}
@@ -509,6 +527,8 @@ export default function HRMSPage() {
               selectedBranch={selectedBranch}
               onReviewLeave={handleReviewLeave}
               setActiveTab={setActiveTab}
+              showStaffDetails={showStaffDetails}
+              setShowStaffDetails={handleToggleStaffDetails}
             />
           )}
 

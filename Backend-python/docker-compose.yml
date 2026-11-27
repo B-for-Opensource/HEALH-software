@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: healesthetic-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: heal_user
+      POSTGRES_PASSWORD: heal_password_2026
+      POSTGRES_DB: healesthetic_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - healesthetic_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heal_user -d healesthetic_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  healesthetic_pgdata:

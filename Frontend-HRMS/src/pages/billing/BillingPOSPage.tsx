@@ -22,6 +22,27 @@ export default function BillingPOSPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // Screenshot (11) Header Fields
+  const [entryNo, setEntryNo] = useState('1');
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [entryTime, setEntryTime] = useState(() => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+  const [department, setDepartment] = useState('Alopathy');
+  const [billNo, setBillNo] = useState('1042');
+  const [opNo, setOpNo] = useState('');
+  const [ipNo, setIpNo] = useState('');
+  const [doctorName, setDoctorName] = useState('SWATHIGHA SUDHEER .K');
+  const [patientName, setPatientName] = useState('');
+  const [address, setAddress] = useState('');
+  const [sex, setSex] = useState('Female');
+  const [ageY, setAgeY] = useState('');
+  const [ageM, setAgeM] = useState('');
+  const [ageD, setAgeD] = useState('');
+  const [manualDiscount, setManualDiscount] = useState('0');
+  const [cashAmount, setCashAmount] = useState('');
+  const [cardAmount, setCardAmount] = useState('');
+  const [notes, setNotes] = useState('');
+  const [receptionist, setReceptionist] = useState('Receptionist 1');
+
   // Patient Selection
   const [patientQuery, setPatientQuery] = useState('');
   const [patientSuggestions, setPatientSuggestions] = useState<Patient[]>([]);
@@ -63,7 +84,7 @@ export default function BillingPOSPage() {
     if (pId) {
       patientsApi.get(pId).then((res) => {
         const p = res?.data || res;
-        setSelectedPatient(p);
+        selectPatient(p);
       });
     }
   }, [searchParams]);
@@ -86,6 +107,11 @@ export default function BillingPOSPage() {
 
   const selectPatient = (p: Patient) => {
     setSelectedPatient(p);
+    setPatientName(`${p.first_name} ${p.last_name || ''}`.trim());
+    setOpNo(p.op_no || '');
+    setAddress(p.address || '');
+    setSex(p.gender || 'Male');
+    setAgeY(p.age_years ? String(p.age_years) : '');
     setPatientQuery('');
     setPatientSuggestions([]);
   };
@@ -332,178 +358,303 @@ export default function BillingPOSPage() {
           </div>
         </div>
       ) : (
-        /* BILL COMPOSER */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* LEFT 2 COLUMNS: Line items */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Patient Search Banner */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs relative">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Select Patient For Bill
-              </label>
-              {selectedPatient ? (
-                <div className="flex items-center justify-between bg-violet-50/80 border border-violet-200 p-3 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-violet-200 text-violet-800 flex items-center justify-center font-bold">
-                      <User className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900 text-sm">
-                        {selectedPatient.first_name} {selectedPatient.last_name || ''}
-                      </p>
-                      <p className="text-xs text-slate-500 font-mono">
-                        OP: {selectedPatient.op_no} · Phone: {selectedPatient.phone}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedPatient(null)}
-                    className="text-xs text-violet-700 hover:underline font-semibold"
-                  >
-                    Change Patient
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
+        /* SCREENSHOT (11) DESKTOP HMS BILLING WINDOW */
+        <div className="bg-white border-2 border-slate-300 rounded-xl shadow-lg overflow-hidden font-sans">
+          {/* WINDOW HEADER */}
+          <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-400" />
+              <span className="font-bold text-sm tracking-wide">Billing</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded text-[10px] font-mono">
+                {savedBill ? 'SAVED' : 'ENTRY'}
+              </span>
+              <button onClick={() => navigate(-1)} className="hover:bg-slate-700 px-2 py-0.5 rounded text-slate-300 hover:text-white">✕</button>
+            </div>
+          </div>
+
+          <div className="p-4 space-y-4 bg-slate-50/50">
+            {/* TOP HEADER CONTROLS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-lg border border-slate-200">
+              {/* Row 1 */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">No.</label>
+                <input
+                  type="text"
+                  value={entryNo}
+                  onChange={(e) => setEntryNo(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-slate-50 font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Time</label>
+                <input
+                  type="text"
+                  value={entryTime}
+                  onChange={(e) => setEntryTime(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Department</label>
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-semibold"
+                >
+                  <option value="Alopathy">Alopathy</option>
+                  <option value="Dermatology">Dermatology</option>
+                  <option value="Cosmetology">Cosmetology</option>
+                  <option value="General Medicine">General Medicine</option>
+                  <option value="Trichology">Trichology</option>
+                  <option value="(None)">(None)</option>
+                </select>
+              </div>
+
+              {/* Row 2 */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Bill No.</label>
+                <div className="flex gap-1">
                   <input
                     type="text"
-                    placeholder="Search patient by Name, Phone number or OP number..."
-                    value={patientQuery}
-                    onChange={(e) => handleSearchPatient(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+                    value={billNo}
+                    onChange={(e) => setBillNo(e.target.value)}
+                    className="flex-1 border border-slate-300 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 bg-white"
                   />
-                  {patientSuggestions.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto divide-y divide-slate-100">
-                      {patientSuggestions.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => selectPatient(p)}
-                          className="w-full text-left p-3 hover:bg-violet-50 text-xs flex items-center justify-between transition"
-                        >
-                          <div>
-                            <span className="font-semibold text-slate-900">
-                              {p.first_name} {p.last_name || ''}
-                            </span>
-                            <span className="text-slate-400 ml-2 font-mono">({p.op_no})</span>
-                          </div>
-                          <span className="text-slate-600">{p.phone}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setBillNo(`BILL-${Math.floor(1000 + Math.random() * 9000)}`)}
+                    className="px-2 py-1 bg-slate-200 hover:bg-slate-300 rounded text-xs font-bold text-slate-700"
+                    title="Generate / Browse Bill No"
+                  >
+                    🔍
+                  </button>
                 </div>
-              )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">OPNo.</label>
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    placeholder="OP No..."
+                    value={opNo}
+                    onChange={(e) => {
+                      setOpNo(e.target.value);
+                      handleSearchPatient(e.target.value);
+                    }}
+                    className="flex-1 border border-slate-300 rounded px-2 py-1 text-xs font-mono font-bold text-slate-900 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => navigate('/appointments')}
+                    className="px-2 py-1 bg-violet-100 hover:bg-violet-200 text-violet-800 rounded text-[11px] font-bold"
+                  >
+                    Booking
+                  </button>
+                </div>
+                {patientSuggestions.length > 0 && (
+                  <div className="absolute z-30 mt-1 bg-white border border-slate-300 rounded shadow-lg max-h-40 overflow-y-auto w-64 text-xs">
+                    {patientSuggestions.map((p) => (
+                      <div
+                        key={p.id}
+                        onClick={() => selectPatient(p)}
+                        className="p-2 hover:bg-slate-100 cursor-pointer border-b border-slate-100"
+                      >
+                        <p className="font-bold text-slate-900">{p.first_name} {p.last_name || ''}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">OP: {p.op_no} · {p.phone}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">IPNo.</label>
+                <input
+                  type="text"
+                  placeholder="(None)"
+                  value={ipNo}
+                  onChange={(e) => setIpNo(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Doctor</label>
+                <select
+                  value={doctorName}
+                  onChange={(e) => setDoctorName(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-semibold text-slate-800"
+                >
+                  <option value="ARUN PRAKASH">ARUN PRAKASH</option>
+                  <option value="SWATHIGHA SUDHEER .K">SWATHIGHA SUDHEER .K</option>
+                  <option value="Dr. Ananya Nair">Dr. Ananya Nair</option>
+                  <option value="Dr. Rajesh Kumar">Dr. Rajesh Kumar</option>
+                </select>
+              </div>
+
+              {/* Row 3 */}
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Patient</label>
+                <input
+                  type="text"
+                  placeholder="Patient Name"
+                  value={patientName}
+                  onChange={(e) => {
+                    setPatientName(e.target.value);
+                    handleSearchPatient(e.target.value);
+                  }}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Sex</label>
+                <select
+                  value={sex}
+                  onChange={(e) => setSex(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white font-semibold"
+                >
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Age(YMD)</label>
+                <div className="grid grid-cols-3 gap-1">
+                  <input
+                    type="number"
+                    placeholder="Y"
+                    value={ageY}
+                    onChange={(e) => setAgeY(e.target.value)}
+                    className="border border-slate-300 rounded px-1.5 py-1 text-xs text-center font-bold"
+                  />
+                  <input
+                    type="number"
+                    placeholder="M"
+                    value={ageM}
+                    onChange={(e) => setAgeM(e.target.value)}
+                    className="border border-slate-300 rounded px-1.5 py-1 text-xs text-center"
+                  />
+                  <input
+                    type="number"
+                    placeholder="D"
+                    value={ageD}
+                    onChange={(e) => setAgeD(e.target.value)}
+                    className="border border-slate-300 rounded px-1.5 py-1 text-xs text-center"
+                  />
+                </div>
+              </div>
+
+              <div className="md:col-span-4">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Address</label>
+                <input
+                  type="text"
+                  placeholder="Patient residential address..."
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full border border-slate-300 rounded px-2 py-1 text-xs bg-white"
+                />
+              </div>
             </div>
 
-            {/* Line items table */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Bill Line Items
-                </h3>
+            {/* SCREENSHOT 11 TABLE: SNo | Item | Rate */}
+            <div className="bg-white border border-slate-300 rounded-lg overflow-hidden shadow-xs">
+              <div className="bg-slate-100 border-b border-slate-200 px-3 py-2 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Billing Items & Procedures
+                </span>
                 <button
                   type="button"
                   onClick={addItem}
-                  className="inline-flex items-center gap-1.5 bg-violet-50 hover:bg-violet-100 text-violet-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                  className="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-bold shadow-xs transition"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Add Line Item
+                  Add Item
                 </button>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+                  <thead className="bg-slate-100 border-b border-slate-300 text-slate-800 font-bold uppercase">
                     <tr>
-                      <th className="py-2.5 px-2">Type</th>
-                      <th className="py-2.5 px-2">Description</th>
-                      <th className="py-2.5 px-2 w-16">Qty</th>
-                      <th className="py-2.5 px-2 w-24">Price (₹)</th>
-                      <th className="py-2.5 px-2 w-20">Disc (₹)</th>
-                      <th className="py-2.5 px-2 w-16">GST %</th>
-                      <th className="py-2.5 px-2 text-right w-24">Total (₹)</th>
-                      <th className="py-2.5 px-2 w-8"></th>
+                      <th className="py-2.5 px-3 w-16 text-center">SNo</th>
+                      <th className="py-2.5 px-3">Item</th>
+                      <th className="py-2.5 px-3 w-28 text-right">Rate</th>
+                      <th className="py-2.5 px-3 w-20 text-center">Qty</th>
+                      <th className="py-2.5 px-3 w-24 text-right">Disc</th>
+                      <th className="py-2.5 px-3 w-28 text-right">Total</th>
+                      <th className="py-2.5 px-3 w-12 text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-200">
                     {items.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="py-2 px-2">
-                          <select
-                            value={item.item_type}
-                            onChange={(e) => updateItem(idx, 'item_type', e.target.value)}
-                            className="border border-slate-300 rounded px-1.5 py-1 text-xs bg-white"
-                          >
-                            <option value="Consultation">Consultation</option>
-                            <option value="Procedure">Procedure</option>
-                            <option value="Medicine">Medicine</option>
-                            <option value="Package">Package</option>
-                            <option value="Retail">Retail</option>
-                          </select>
+                      <tr key={idx} className="hover:bg-slate-50/80">
+                        <td className="py-2 px-3 text-center font-bold text-slate-600">
+                          {idx + 1}
                         </td>
-                        <td className="py-2 px-2">
+                        <td className="py-2 px-3">
                           <input
                             type="text"
-                            placeholder="Service name..."
+                            placeholder="Enter consultation, medicine or procedure name..."
                             value={item.item_name}
                             onChange={(e) => updateItem(idx, 'item_name', e.target.value)}
-                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
+                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs font-semibold focus:ring-1 focus:ring-slate-500 focus:outline-none"
                           />
                         </td>
-                        <td className="py-2 px-2">
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-center"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
+                        <td className="py-2 px-3 text-right">
                           <input
                             type="number"
                             min="0"
                             step="10"
                             value={item.unit_price}
                             onChange={(e) => updateItem(idx, 'unit_price', e.target.value)}
-                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-right font-semibold"
+                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-right font-bold"
                           />
                         </td>
-                        <td className="py-2 px-2">
+                        <td className="py-2 px-3 text-center">
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                            className="w-16 border border-slate-300 rounded px-1.5 py-1 text-xs text-center"
+                          />
+                        </td>
+                        <td className="py-2 px-3 text-right">
                           <input
                             type="number"
                             min="0"
                             value={item.discount_amount}
                             onChange={(e) => updateItem(idx, 'discount_amount', e.target.value)}
-                            className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-right text-rose-600"
+                            className="w-20 border border-slate-300 rounded px-1.5 py-1 text-xs text-right text-rose-600 font-semibold"
                           />
                         </td>
-                        <td className="py-2 px-2">
-                          <select
-                            value={item.cgst_percent + item.sgst_percent}
-                            onChange={(e) => {
-                              const totalTaxPct = Number(e.target.value);
-                              updateItem(idx, 'cgst_percent', totalTaxPct / 2);
-                              updateItem(idx, 'sgst_percent', totalTaxPct / 2);
-                            }}
-                            className="w-full border border-slate-300 rounded px-1 py-1 text-xs bg-white text-center"
-                          >
-                            <option value="0">0%</option>
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18">18%</option>
-                          </select>
-                        </td>
-                        <td className="py-2 px-2 text-right font-bold text-slate-800">
+                        <td className="py-2 px-3 text-right font-black text-slate-900">
                           {formatCurrency(item.line_total)}
                         </td>
-                        <td className="py-2 px-2 text-right">
+                        <td className="py-2 px-3 text-center">
                           {items.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removeItem(idx)}
-                              className="text-rose-400 hover:text-rose-600 p-1"
+                              className="text-rose-500 hover:text-rose-700 p-1"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -514,114 +665,144 @@ export default function BillingPOSPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Discount Remarks / Authorisation Note
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Inaugural 10% discount approved by Clinic Director"
-                  value={discountRemarks}
-                  onChange={(e) => setDiscountRemarks(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
-                />
+            {/* SCREENSHOT 11 FINANCIALS & TOTALS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-lg border border-slate-200">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Notes</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Enter billing notes, discount approvals or remarks..."
+                    value={notes}
+                    onChange={(e) => {
+                      setNotes(e.target.value);
+                      setDiscountRemarks(e.target.value);
+                    }}
+                    className="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">Discount:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={manualDiscount}
+                    onChange={(e) => setManualDiscount(e.target.value)}
+                    className="w-32 border border-slate-300 rounded px-2 py-1 text-right font-bold text-rose-600"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
+                  <span className="font-bold text-slate-900 text-sm">Net Amount:</span>
+                  <span className="text-base font-black text-violet-800">
+                    {formatCurrency(netAmount)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-200 pt-1.5">
+                  <span className="font-bold text-slate-700">Cash:</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={cashAmount}
+                    onChange={(e) => {
+                      setCashAmount(e.target.value);
+                      setPaymentSplits((prev) =>
+                        prev.map((p) => (p.mode === 'Cash' ? { ...p, amount: e.target.value } : p))
+                      );
+                    }}
+                    className="w-32 border border-slate-300 rounded px-2 py-1 text-right font-bold font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700">Card:</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={cardAmount}
+                    onChange={(e) => {
+                      setCardAmount(e.target.value);
+                      setPaymentSplits((prev) =>
+                        prev.map((p) => (p.mode === 'Card' ? { ...p, amount: e.target.value } : p))
+                      );
+                    }}
+                    className="w-32 border border-slate-300 rounded px-2 py-1 text-right font-bold font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-300 pt-1.5 font-bold">
+                  <span className="text-slate-800">Balance:</span>
+                  <span className={balanceRemaining > 0 ? 'text-amber-700 font-black' : 'text-emerald-700 font-black'}>
+                    {formatCurrency(balanceRemaining)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* RIGHT 1 COLUMN: POS Summary & Checkout */}
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2">
-                Order Total Summary
-              </h3>
+            {/* SCREENSHOT 11 BOTTOM ACTION TOOLBAR */}
+            <div className="bg-slate-200 p-3 rounded-lg border border-slate-300 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-400 rounded text-xs font-bold text-slate-800 shadow-xs flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print
+                </button>
 
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-slate-600">
-                  <span>Gross Subtotal:</span>
-                  <span className="font-semibold">{formatCurrency(subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-rose-600">
-                  <span>Discount:</span>
-                  <span className="font-semibold">-{formatCurrency(totalDiscount)}</span>
-                </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>GST Taxes:</span>
-                  <span className="font-semibold">{formatCurrency(totalTax)}</span>
-                </div>
-                <div className="flex justify-between text-base font-extrabold text-slate-900 border-t border-slate-200 pt-3">
-                  <span>Net Payable:</span>
-                  <span className="text-violet-700 text-xl">{formatCurrency(netAmount)}</span>
-                </div>
-              </div>
-
-              {/* Payment Split Inputs */}
-              <div className="pt-3 border-t border-slate-100 space-y-2.5">
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Payment Collection Modes
-                </span>
-
-                {paymentSplits.map((p, idx) => (
-                  <div key={p.mode} className="flex items-center gap-2">
-                    <span className="w-14 text-xs font-semibold text-slate-600">{p.mode}</span>
-                    <input
-                      type="number"
-                      placeholder="0.00"
-                      value={p.amount}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPaymentSplits((prev) =>
-                          prev.map((item, i) => (i === idx ? { ...item, amount: val } : item))
-                        );
-                      }}
-                      className="flex-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-right font-mono font-semibold focus:ring-1 focus:ring-violet-500 focus:outline-none"
-                    />
-                  </div>
-                ))}
-
-                {/* Additional UPI / Card details */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <input
-                    type="text"
-                    placeholder="UPI Ref (e.g. 1234)"
-                    value={upiRef}
-                    onChange={(e) => setUpiRef(e.target.value)}
-                    className="border border-slate-300 rounded px-2 py-1 text-[11px]"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Card Last 4"
-                    maxLength={4}
-                    value={cardLast4}
-                    onChange={(e) => setCardLast4(e.target.value)}
-                    className="border border-slate-300 rounded px-2 py-1 text-[11px]"
-                  />
-                </div>
-
-                <div className="bg-slate-50 p-2.5 rounded-lg text-xs space-y-1">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Collected:</span>
-                    <span className="font-bold">{formatCurrency(totalEnteredPayment)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold">
-                    <span>Balance Due:</span>
-                    <span className={balanceRemaining > 0 ? 'text-amber-700' : 'text-emerald-700'}>
-                      {formatCurrency(Math.max(0, balanceRemaining))}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="font-bold text-slate-700">Receptionist:</span>
+                  <select
+                    value={receptionist}
+                    onChange={(e) => setReceptionist(e.target.value)}
+                    className="bg-white border border-slate-300 rounded px-2 py-1 text-xs font-semibold text-slate-800"
+                  >
+                    <option value="(All)">(All)</option>
+                    <option value="Receptionist 1">Receptionist 1</option>
+                    <option value="SUPER ADMIN">SUPER ADMIN</option>
+                    <option value="Emma Watson">Emma Watson</option>
+                  </select>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleFinalizeBill}
-                disabled={loading || !selectedPatient}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm shadow-sm transition flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                {loading ? 'Processing Bill...' : 'Confirm Payment & Generate Bill'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleFinalizeBill}
+                  disabled={loading}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-xs transition"
+                >
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={startNewBill}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-400 rounded text-xs font-bold text-slate-800 shadow-xs"
+                >
+                  New
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/reception/queue')}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-400 rounded text-xs font-bold text-slate-800 shadow-xs"
+                >
+                  Exit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => alert("Billing Settings:\nTax Profile: GST Standard\nThermal Print: Enabled\nA5 Invoice: Enabled")}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-400 rounded text-xs font-bold text-slate-800 shadow-xs"
+                >
+                  Settings
+                </button>
+              </div>
             </div>
           </div>
         </div>

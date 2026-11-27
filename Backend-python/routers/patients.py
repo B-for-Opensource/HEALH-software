@@ -6,7 +6,7 @@ from sqlalchemy import or_, desc
 from database import get_db
 import models
 import schemas
-from auth import get_current_user, resolve_branch_id
+from auth import get_current_user, resolve_branch_id, resolve_org_id, log_audit, require_role
 
 router = APIRouter(prefix="/api/patients", tags=["Patients"])
 
@@ -69,10 +69,11 @@ def list_patients(
     current_user: models.Staff = Depends(get_current_user)
 ):
     branch_id = resolve_branch_id(request, current_user)
-    base_query = db.query(models.Patient).filter(models.Patient.is_active == True)
-
-    if current_user.role not in ["Super Admin"]:
-        base_query = base_query.filter(models.Patient.branch_id == branch_id)
+    org_id = resolve_org_id(current_user)
+    base_query = db.query(models.Patient).filter(
+        models.Patient.is_active == True,
+        models.Patient.organisation_id == org_id
+    )
 
     if search:
         s = f"%{search.strip()}%"
@@ -183,6 +184,7 @@ def create_patient(
     current_user: models.Staff = Depends(get_current_user)
 ):
     branch_id = resolve_branch_id(request, current_user)
+    org_id = resolve_org_id(current_user)
     op_number = generate_op_number(db, branch_id)
 
     dob = None
@@ -193,11 +195,13 @@ def create_patient(
             pass
 
     patient = models.Patient(
+        organisation_id=org_id,
         branch_id=branch_id,
         op_no=op_number,
         first_name=req.first_name,
         last_name=req.last_name,
-        phone=req.phone,
+        phone=req.phone or None,
+        created_source=getattr(req, "created_source", None) or "RECEPTION",
         alt_phone=req.alt_phone,
         email=req.email,
         date_of_birth=dob,
@@ -280,3 +284,45 @@ def update_patient(
             "phone": p.phone
         }
     )
+
+
+@router.post("/merge", response_model=schemas.ApiResponse)
+def merge_duplicate_patients(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: models.Staff = Depends(require_role(["Super Admin", "Branch Manager"]))
+):
+    surviving_id = payload.get("surviving_patient_id")
+    merged_id = payload.get("merged_patient_id")
+    reason = (payload.get("reason") or "").strip()
+    if not surviving_id or not merged_id or surviving_id == merged_id or not reason:
+        raise HTTPException(status_code=400, detail="surviving_patient_id, distinct merged_patient_id, and reason are required")
+
+    surviving = db.query(models.Patient).filter(models.Patient.id == surviving_id).first()
+    merged = db.query(models.Patient).filter(models.Patient.id == merged_id).first()
+    if not surviving or not merged:
+        raise HTTPException(status_code=404, detail="One or both patients not found")
+
+    # Reassign all linked clinical & financial records
+    for model_cls in [
+        models.Encounter, models.Appointment, models.Consultation, models.Prescription,
+        models.LabOrder, models.ImagingOrder, models.NursingAssessment, models.NursingProcedureOrder,
+        models.Bill, models.Payment, models.PendingCharge, models.PharmacyDispensation
+    ]:
+        db.query(model_cls).filter(model_cls.patient_id == merged_id).update({"patient_id": surviving_id})
+
+    merged.is_active = False
+    merged.merged_into_patient_id = surviving_id
+    merged.merge_reason = reason
+
+    db.add(models.PatientMergeLog(
+        organisation_id=resolve_org_id(current_user),
+        surviving_patient_id=surviving_id,
+        merged_patient_id=merged_id,
+        reason=reason,
+        merged_by=current_user.id,
+        snapshot_json=f'{{"merged_op_no": "{merged.op_no}", "surviving_op_no": "{surviving.op_no}"}}'
+    ))
+    log_audit(db, action="MERGE_PATIENT", entity_type="Patient", entity_id=surviving_id, entity_ref=surviving.op_no, user=current_user, remarks=f"Merged {merged.op_no} into {surviving.op_no}: {reason}")
+    db.commit()
+    return schemas.ApiResponse(success=True, message=f"Merged {merged.op_no} into {surviving.op_no}")

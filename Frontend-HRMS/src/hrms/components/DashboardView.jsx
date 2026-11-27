@@ -20,7 +20,9 @@ export default function DashboardView({
   branches, 
   selectedBranch, 
   onReviewLeave, 
-  setActiveTab 
+  setActiveTab,
+  showStaffDetails = false,
+  setShowStaffDetails
 }) {
   if (!stats) {
     return (
@@ -71,8 +73,34 @@ export default function DashboardView({
 
   return (
     <div className="space-y-6">
-      {/* Page Title & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {!showStaffDetails ? (
+        <div className="bg-gradient-to-r from-blue-50/80 via-white to-indigo-50/80 border border-blue-200/80 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <span>Staff Details & Current Staff Are Hidden</span>
+                <span className="text-[10px] font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Focused View</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Current focus is on the Live Patient Journey Pipeline above. To view staff headcount, attendance rate, doctor roster, and branch distribution, click below or use the button in the top navigation bar.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowStaffDetails && setShowStaffDetails(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all shrink-0 active:scale-95"
+          >
+            <Users className="w-4 h-4" />
+            <span>Show Staff Details & Operations</span>
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Page Title & Quick Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             Clinic Operations & HR Overview
@@ -297,6 +325,8 @@ export default function DashboardView({
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

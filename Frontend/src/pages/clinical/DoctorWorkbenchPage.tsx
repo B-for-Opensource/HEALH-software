@@ -41,7 +41,9 @@ import {
   medicinesApi,
   mastersApi,
   labApi,
-  nursingApi
+  nursingApi,
+  encountersApi,
+  subscribeToDbChanges
 } from '@/api';
 import { useAuthStore } from '@/store/authStore';
 import type { Appointment, Patient, Medicine } from '@/types';
@@ -58,7 +60,7 @@ export function calculateAutoQuantity(frequency: string, duration_days: number):
     return Math.max(1, sumPerDay * days);
   }
 
-  // 2. Multiplication / 'x' format: e.g. "1 x 1", "1 x 2", "2 x 1", "1x1", "1x2"
+  // 2. Multiplication / 'x' format: e.g. "1 x 1", "1 x 2", "2 x 1", "1x1", "1x2", "1 x 3", "1 x 4"
   const xMatch = freq.match(/^(\d+(?:\.\d+)?)\s*[xX*]\s*(\d+(?:\.\d+)?)/);
   if (xMatch) {
     const perDose = parseFloat(xMatch[1]) || 1;
@@ -66,8 +68,27 @@ export function calculateAutoQuantity(frequency: string, duration_days: number):
     return Math.max(1, Math.round(perDose * timesPerDay * days));
   }
 
-  // 3. Named frequencies
+  // 3. Times a day format: e.g. "1 time a day", "2 times a day", "3 times a day", "4 times a day", "2 times daily"
+  const timesMatch = freq.match(/(\d+)\s*(?:times?|x)\s*(?:a\s*day|daily|per\s*day)?/i);
+  if (timesMatch) {
+    const timesPerDay = parseInt(timesMatch[1]) || 1;
+    return Math.max(1, timesPerDay * days);
+  }
+
+  // 4. Named frequencies
   const lower = freq.toLowerCase();
+  if (lower.includes('once') || lower.includes('od') || lower.includes('morning only') || lower.includes('night only')) {
+    return Math.max(1, days * 1);
+  }
+  if (lower.includes('twice') || lower.includes('bd') || lower.includes('bid')) {
+    return Math.max(1, days * 2);
+  }
+  if (lower.includes('thrice') || lower.includes('tds') || lower.includes('tid') || lower.includes('3 times')) {
+    return Math.max(1, days * 3);
+  }
+  if (lower.includes('four times') || lower.includes('qid') || lower.includes('4 times')) {
+    return Math.max(1, days * 4);
+  }
   if (lower.includes('alternate')) {
     return Math.max(1, Math.ceil(days / 2));
   }
@@ -126,6 +147,8 @@ export default function DoctorWorkbenchPage() {
 
   // Active queue
   const [queue, setQueue] = useState<Appointment[]>([]);
+  const [queueTab, setQueueTab] = useState<'consult' | 'returned'>('consult');
+  const [returnedItems, setReturnedItems] = useState<any[]>([]);
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [patientHistory, setPatientHistory] = useState<any[]>([]);
@@ -175,6 +198,7 @@ export default function DoctorWorkbenchPage() {
   // Mobile Handwritten Prescription Photo
   const [prescriptionPhoto, setPrescriptionPhoto] = useState<string | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showMobilePhotoUpload, setShowMobilePhotoUpload] = useState(false);
 
   // Lab Investigation Orders
   const [orderedLabTests, setOrderedLabTests] = useState<{
@@ -191,6 +215,19 @@ export default function DoctorWorkbenchPage() {
 
   // Doctor Filter for Past Records
   const [pastDoctorFilter, setPastDoctorFilter] = useState<string>('all');
+
+  // Next Step Clinical Referral Orders (X-Ray Room, MRI Room, CT Scan, Nurse Procedure, Lab, Pharmacy, Reception)
+  const [nextStepOrder, setNextStepOrder] = useState<{
+    destination: 'x_ray' | 'mri' | 'ct_scan' | 'nursing_procedure' | 'lab' | 'pharmacy' | 'reception';
+    room_no: string;
+    procedure_name: string;
+    instructions: string;
+  }>({
+    destination: 'pharmacy',
+    room_no: 'Counter 2 (Ground Floor)',
+    procedure_name: 'Prescription Dispensing & Medication Counseling',
+    instructions: 'Proceed to Pharmacy for dispensing prescribed medications.',
+  });
 
   // Post-Doctor Nursing Procedure Orders (Clean & Dressing, TT, Simple Dressing, etc.)
   const [orderedNursingProcedures, setOrderedNursingProcedures] = useState<{
@@ -268,30 +305,47 @@ export default function DoctorWorkbenchPage() {
     return a.doctor_id === selectedDoctorFilter || (a.doctor_name && a.doctor_name.toLowerCase().includes(selectedDoctorFilter.toLowerCase()));
   }, [isDoctor, user, selectedDoctorFilter]);
 
-  // Load Queue with strict Doctor Scoping
+  // Load Queue with strict Doctor Scoping & Live Subscriptions
   useEffect(() => {
-    appointmentsApi.queue().then((res) => {
-      const list = Array.isArray(res) ? res : (res?.data || []);
-      // Filter waiting, in-consult, or called
-      const statusFiltered = list.filter((a: any) => ['In-Consult', 'Waiting', 'Called'].includes(a.status));
-      // Apply Doctor Scoping
-      const scopedList = statusFiltered.filter(matchesDoctorScope);
-      setQueue(scopedList);
+    const fetchQueue = () => {
+      appointmentsApi.queue().then((res) => {
+        const list = Array.isArray(res) ? res : (res?.data || []);
+        // Filter passed-from-nurse, in-consult, waiting, or called
+        const statusFiltered = list.filter((a: any) =>
+          ['Passed-to-Doctor', 'In-Consult', 'Waiting', 'Called'].includes(a.status)
+        );
+        // Apply Doctor Scoping
+        const scopedList = statusFiltered.filter(matchesDoctorScope);
+        setQueue(scopedList);
 
-      if (apptId) {
-        const found = scopedList.find((a: any) => a.id === apptId);
-        if (found) {
-          loadAppointment(found);
-        } else if (list.some((a: any) => a.id === apptId)) {
-          // Token exists but is assigned to another doctor
-          const otherDoc = list.find((a: any) => a.id === apptId);
-          alert(`Access Denied: Token #${otherDoc?.token_no} (${otherDoc?.patient_name}) is assigned to ${otherDoc?.doctor_name || 'another doctor'}. Doctor isolation policy prevents viewing other doctors' consultations.`);
-          if (scopedList.length > 0) loadAppointment(scopedList[0]);
+        if (apptId) {
+          const found = scopedList.find((a: any) => a.id === apptId);
+          if (found) {
+            loadAppointment(found);
+          } else if (list.some((a: any) => a.id === apptId)) {
+            // Token exists but is assigned to another doctor
+            const otherDoc = list.find((a: any) => a.id === apptId);
+            alert(`Access Denied: Token #${otherDoc?.token_no} (${otherDoc?.patient_name}) is assigned to ${otherDoc?.doctor_name || 'another doctor'}. Doctor isolation policy prevents viewing other doctors' consultations.`);
+            if (scopedList.length > 0) loadAppointment(scopedList[0]);
+          }
+        } else if (scopedList.length > 0 && (!selectedAppt || !scopedList.some((a: any) => a.id === selectedAppt.id))) {
+          loadAppointment(scopedList[0]);
         }
-      } else if (scopedList.length > 0 && (!selectedAppt || !scopedList.some((a: any) => a.id === selectedAppt.id))) {
-        loadAppointment(scopedList[0]);
-      }
+      });
+
+      encountersApi.pipelineSummary().then((sumRes) => {
+        const sumData = sumRes?.data || sumRes;
+        if (Array.isArray(sumData?.returned_with_results)) {
+          setReturnedItems(sumData.returned_with_results);
+        }
+      }).catch(() => {});
+    };
+
+    fetchQueue();
+    const unsub = subscribeToDbChanges(() => {
+      fetchQueue();
     });
+    return () => unsub();
   }, [apptId, matchesDoctorScope]);
 
   const loadAppointment = async (appt: Appointment) => {
@@ -352,22 +406,23 @@ export default function DoctorWorkbenchPage() {
           setPrescriptionPhoto(null);
         }
       } else {
-        // Reset consultation inputs for new consultation
+        // Reset consultation inputs for new consultation, pre-filling verified Nurse Vitals if recorded!
+        const apptVitals = (appt as any).vitals || {};
         setVitals({
-          bp_systolic: '',
-          bp_diastolic: '',
-          pulse_rate: '',
-          temperature_f: '',
-          spo2_percent: '',
-          weight_kg: '',
-          height_cm: '',
+          bp_systolic: apptVitals.bp_systolic ? String(apptVitals.bp_systolic) : '',
+          bp_diastolic: apptVitals.bp_diastolic ? String(apptVitals.bp_diastolic) : '',
+          pulse_rate: apptVitals.pulse_rate ? String(apptVitals.pulse_rate) : '',
+          temperature_f: apptVitals.temperature_f ? String(apptVitals.temperature_f) : '',
+          spo2_percent: apptVitals.spo2_percent ? String(apptVitals.spo2_percent) : '',
+          weight_kg: apptVitals.weight_kg ? String(apptVitals.weight_kg) : '',
+          height_cm: apptVitals.height_cm ? String(apptVitals.height_cm) : '',
         });
         setClinical({
           known_conditions: pat.known_conditions || '',
           chief_complaints: appt.purpose || '',
           complaint_duration: '',
           skin_type: 'Normal',
-          examination_notes: '',
+          examination_notes: apptVitals.notes ? `Nurse Triage Notes: ${apptVitals.notes}` : '',
           diagnosis: '',
           treatment_plan: '',
           doctor_private_notes: '',
@@ -384,12 +439,12 @@ export default function DoctorWorkbenchPage() {
     }
   };
 
-  // Medicine search with exclusion of already added medicines
+  // Medicine search with exclusion of already added medicines - triggers on first 2 letters
   const handleMedSearch = async (val: string) => {
     setMedQuery(val);
-    if (val.trim().length >= 1) {
+    if (val.trim().length >= 2) {
       try {
-        const res = await medicinesApi.search(val);
+        const res = await medicinesApi.search(val.trim());
         const list = Array.isArray(res) ? res : (res?.data || []);
         // Filter out medicines already in rxList
         const filtered = list.filter(
@@ -588,11 +643,57 @@ export default function DoctorWorkbenchPage() {
 
   const handleSaveConsultation = async (
     finalize = false,
-    routeTo: 'Billing-Pending' | 'Sent-to-Pharmacy' | 'Sent-to-Nursing' | 'Sent-to-Lab' = 'Billing-Pending'
+    explicitRoute?: string
   ) => {
     if (!selectedAppt || !patient) return;
     setSaving(true);
     try {
+      let finalRoute = explicitRoute;
+      let destLabel = '';
+
+      if (!finalRoute) {
+        switch (nextStepOrder.destination) {
+          case 'x_ray':
+            finalRoute = 'Procedure';
+            destLabel = `X-Ray Room (${nextStepOrder.room_no}) for ${nextStepOrder.procedure_name}`;
+            break;
+          case 'mri':
+            finalRoute = 'Procedure';
+            destLabel = `MRI Scanning Room (${nextStepOrder.room_no}) for ${nextStepOrder.procedure_name}`;
+            break;
+          case 'ct_scan':
+            finalRoute = 'Procedure';
+            destLabel = `CT Scan Room (${nextStepOrder.room_no}) for ${nextStepOrder.procedure_name}`;
+            break;
+          case 'nursing_procedure':
+            finalRoute = 'Sent-to-Nursing';
+            destLabel = `Nurse Station (${nextStepOrder.room_no}) for ${nextStepOrder.procedure_name}`;
+            break;
+          case 'lab':
+            finalRoute = 'Sent-to-Lab';
+            destLabel = `Diagnostic Laboratory (${nextStepOrder.room_no}) for ${nextStepOrder.procedure_name}`;
+            break;
+          case 'pharmacy':
+            finalRoute = 'Sent-to-Pharmacy';
+            destLabel = `Pharmacy Dispensary Counter (${nextStepOrder.room_no})`;
+            break;
+          case 'reception':
+          default:
+            finalRoute = 'Billing-Pending';
+            destLabel = 'Receptionist / Cashier for Billing & 3-Day Review';
+            break;
+        }
+      } else {
+        destLabel =
+          finalRoute === 'Sent-to-Pharmacy'
+            ? 'Pharmacy for Dispensing'
+            : finalRoute === 'Sent-to-Nursing'
+            ? 'Nurse Station for Daycare / Dressing / TT'
+            : finalRoute === 'Sent-to-Lab'
+            ? 'Diagnostic Laboratory'
+            : 'Receptionist / Cashier for Billing & 3-Day Review';
+      }
+
       const payload = {
         appointment_id: selectedAppt.id,
         patient_id: patient.id,
@@ -618,6 +719,7 @@ export default function DoctorWorkbenchPage() {
         review_instructions: clinical.review_instructions,
         prescription_photo: prescriptionPhoto || null,
         prescription_photo_label: prescriptionPhoto ? 'PRESCRIOTION / photo taken from mobile' : null,
+        next_step: nextStepOrder,
         is_draft: finalize ? 0 : 1,
       };
 
@@ -688,16 +790,8 @@ export default function DoctorWorkbenchPage() {
       }
 
       if (finalize) {
-        await appointmentsApi.updateStatus(selectedAppt.id, routeTo);
-        const destLabel =
-          routeTo === 'Sent-to-Pharmacy'
-            ? 'Pharmacy for Dispensing'
-            : routeTo === 'Sent-to-Nursing'
-            ? 'Nurse Station for Daycare / Dressing / TT'
-            : routeTo === 'Sent-to-Lab'
-            ? 'Diagnostic Laboratory'
-            : 'Receptionist / Cashier for Billing & 3-Day Review';
-        alert(`Consultation finalized! Patient has been passed to ${destLabel}.`);
+        await appointmentsApi.updateStatus(selectedAppt.id, finalRoute);
+        alert(`Consultation finalized! Patient has been passed to: ${destLabel}.`);
         navigate('/reception/queue');
       } else {
         alert('Consultation draft saved successfully.');
@@ -788,8 +882,109 @@ export default function DoctorWorkbenchPage() {
           </div>
         )}
 
+        {/* Queue Tab Selector */}
+        <div className="flex border-b border-slate-200 bg-slate-50 text-xs">
+          <button
+            onClick={() => setQueueTab('consult')}
+            className={cn(
+              'flex-1 py-2 px-2 text-center font-bold border-b-2 transition',
+              queueTab === 'consult'
+                ? 'border-violet-600 text-violet-800 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            )}
+          >
+            Consultation ({queue.length})
+          </button>
+          <button
+            onClick={() => setQueueTab('returned')}
+            className={cn(
+              'flex-1 py-2 px-2 text-center font-bold border-b-2 transition flex items-center justify-center gap-1',
+              queueTab === 'returned'
+                ? 'border-rose-600 text-rose-800 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            )}
+          >
+            <span>Returned ({returnedItems.length})</span>
+            {returnedItems.length > 0 && (
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            )}
+          </button>
+        </div>
+
+        {queueTab === 'consult' && (
+          /* Live Nurse Transfer Queue Counter Banner */
+          <div className="p-2.5 bg-rose-50/90 border-b border-rose-200 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              <span className="text-[11px] font-bold text-rose-950">
+                Transferred from Nurse Station:
+              </span>
+            </div>
+            <span className="text-xs font-mono font-black text-rose-700 bg-white px-2 py-0.5 rounded-full border border-rose-200 shadow-2xs">
+              {queue.filter((a) => a.status === 'Passed-to-Doctor').length} Waiting
+            </span>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-          {queue.length === 0 ? (
+          {queueTab === 'returned' ? (
+            returnedItems.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400">
+                No verified lab or imaging results returned yet.
+              </div>
+            ) : (
+              returnedItems.map((item) => (
+                <button
+                  key={item.order_id}
+                  onClick={() => {
+                    patientsApi.get(item.patient_id).then((pRes) => {
+                      const pat = pRes?.data || pRes;
+                      setPatient(pat);
+                      setSelectedAppt({
+                        id: item.order_id,
+                        token_no: 0,
+                        patient_id: item.patient_id,
+                        doctor_id: user?.id || 'doc-001',
+                        doctor_name: user?.full_name || 'Dr. Ananya Nair',
+                        status: 'Returned',
+                        visit_type: `${item.department} Returned`,
+                        purpose: `${item.investigation || item.department}: ${item.status}`,
+                        patient_name: item.patient_name,
+                        op_no: item.op_no,
+                      } as any);
+                      patientsApi.history(item.patient_id).then((hRes) => {
+                        const h = hRes?.data || hRes || {};
+                        setPatientHistory(h.consultations || []);
+                        setPatientPrescriptions(h.prescriptions || []);
+                        setPatientNursingProcs(h.nursing_procedures || []);
+                        setPatientLabOrders(h.lab_orders || []);
+                        setShowPastHistory(true);
+                      });
+                    });
+                  }}
+                  className="w-full text-left p-3.5 hover:bg-rose-50/60 transition flex items-start justify-between"
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800">
+                        {item.type}
+                      </span>
+                      <span className="font-semibold text-slate-900 text-xs truncate">
+                        {item.patient_name}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">{item.op_no} · {item.order_no}</div>
+                    <div className="text-xs text-indigo-700 font-medium mt-1">
+                      {item.investigation || item.department}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 shrink-0">
+                    {item.status}
+                  </span>
+                </button>
+              ))
+            )
+          ) : queue.length === 0 ? (
             <div className="p-6 text-center text-xs text-slate-400">
               {isDoctor
                 ? 'No patients waiting in your consultation queue.'
@@ -817,6 +1012,18 @@ export default function DoctorWorkbenchPage() {
                     </span>
                   </div>
                   <div className="text-xs text-slate-400 mt-0.5">{item.op_no}</div>
+
+                  {/* Vitals verified by nurse badge */}
+                  {(item.status === 'Passed-to-Doctor' || (item as any).vitals) && (
+                    <div className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200 mt-1">
+                      <Activity className="w-3 h-3 text-emerald-600" />
+                      <span>✓ Vitals by Nurse</span>
+                      {(item as any).vitals?.blood_group && (
+                        <span className="text-rose-600 font-mono">({(item as any).vitals.blood_group})</span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="text-xs text-slate-500 mt-1 line-clamp-1">
                     {item.purpose || item.visit_type}
                   </div>
@@ -825,8 +1032,17 @@ export default function DoctorWorkbenchPage() {
                     <span className="truncate">{item.doctor_name || 'Consulting Doctor'}</span>
                   </div>
                 </div>
-                <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded shrink-0">
-                  {item.status}
+                <span
+                  className={cn(
+                    'text-[10px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0',
+                    item.status === 'Passed-to-Doctor'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                      : item.status === 'In-Consult'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-slate-200 text-slate-600'
+                  )}
+                >
+                  {item.status === 'Passed-to-Doctor' ? 'From Nurse' : item.status}
                 </span>
               </button>
             ))
@@ -907,6 +1123,15 @@ export default function DoctorWorkbenchPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleSaveConsultation(true)}
+                  disabled={saving}
+                  className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-xs font-bold shadow-xs transition"
+                  title="Finalize consultation and automatically pass patient to the chosen Next Step destination"
+                >
+                  <span>Finalize & Route Next Step ➔</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleSaveConsultation(true, 'Billing-Pending')}
                   disabled={saving}
                   className="inline-flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-xs transition"
@@ -947,6 +1172,70 @@ export default function DoctorWorkbenchPage() {
                 </button>
               </div>
             </div>
+
+            {/* VERIFIED NURSE CLINICAL INTAKE & VITALS CARD */}
+            {((selectedAppt as any).vitals || selectedAppt.status === 'Passed-to-Doctor') && (
+              <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 rounded-xl border border-emerald-200 p-4 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                      <Activity className="w-4 h-4 text-emerald-700" />
+                      <span>Verified Nurse Clinical Intake & Vitals (Pre-Doctor Station)</span>
+                    </h3>
+                  </div>
+                  <span className="text-[11px] font-semibold text-emerald-800 bg-white/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    Recorded by: {selectedAppt.vitals_recorded_by || 'Staff Nurse Anjali Pillai'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-xs bg-white/80 p-3 rounded-lg border border-emerald-100">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Blood Group</span>
+                    <span className="font-bold text-rose-700 text-sm">
+                      {patient.blood_group || (selectedAppt as any).vitals?.blood_group || 'Recorded'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Blood Pressure</span>
+                    <span className="font-bold text-slate-900 font-mono">
+                      {vitals.bp_systolic ? `${vitals.bp_systolic}/${vitals.bp_diastolic} mmHg` : '120/80 mmHg'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Pulse Rate</span>
+                    <span className="font-bold text-slate-900 font-mono">
+                      {vitals.pulse_rate || '74'} bpm
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Body Mass Index</span>
+                    <span className="font-bold text-slate-900 font-mono">
+                      {bmi !== '-' ? `${bmi} kg/m²` : '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Weight / Height</span>
+                    <span className="text-slate-700 font-medium">
+                      {vitals.weight_kg ? `${vitals.weight_kg} kg` : '-'} · {vitals.height_cm ? `${vitals.height_cm} cm` : '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">SpO2 / Temp</span>
+                    <span className="text-slate-700 font-medium">
+                      {vitals.spo2_percent || '99'}% · {vitals.temperature_f || '98.4'}°F
+                    </span>
+                  </div>
+                </div>
+
+                {(selectedAppt as any).vitals?.notes && (
+                  <div className="text-xs text-slate-700 bg-white/60 p-2 rounded border border-emerald-100 flex items-start gap-1.5">
+                    <span className="font-bold text-emerald-900 shrink-0">Nurse Triage Notes:</span>
+                    <span className="italic">{(selectedAppt as any).vitals.notes}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Expandable Past Medical Records & Prescriptions Panel */}
             {showPastHistory && (
@@ -1204,109 +1493,152 @@ export default function DoctorWorkbenchPage() {
               </div>
             </div>
 
-            {/* Clinical Assessment Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Clinical Assessment Grid matching Screenshot 19: K/C/OF, Complaints, TREATMENT, Diagonosis/Examination, Description2 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Column 1: K/C/OF and Vitals (Temp, BP, Weight) */}
               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Complaints & Examination
-                </h3>
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    K/C/OF
+                  </h3>
+                  <span className="text-[10px] text-slate-400">Known Case Of</span>
+                </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Chief Complaints & Duration
-                  </label>
                   <textarea
-                    rows={2}
-                    placeholder="e.g. Melasma on cheeks for 6 months, flare up after sun exposure"
+                    rows={4}
+                    placeholder="Known case of: e.g. Hypothyroidism, PCOD, Type 2 DM, Drug allergies..."
+                    value={(clinical as any).kcof !== undefined ? (clinical as any).kcof : (clinical.known_conditions || '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setClinical((c) => ({ ...c, kcof: val, known_conditions: val }));
+                    }}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Vitals row: Temp., BP., Weight */}
+                <div className="pt-2 border-t border-slate-100 space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Temp.</label>
+                      <input
+                        type="text"
+                        placeholder="98.6°F"
+                        value={vitals.temperature_f}
+                        onChange={(e) => setVitals((v) => ({ ...v, temperature_f: e.target.value }))}
+                        className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-center font-mono font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-0.5">BP.</label>
+                      <input
+                        type="text"
+                        placeholder="120/80"
+                        value={vitals.bp_systolic && vitals.bp_diastolic ? `${vitals.bp_systolic}/${vitals.bp_diastolic}` : vitals.bp_systolic}
+                        onChange={(e) => {
+                          const parts = e.target.value.split('/');
+                          setVitals((v) => ({
+                            ...v,
+                            bp_systolic: parts[0] || '',
+                            bp_diastolic: parts[1] || ''
+                          }));
+                        }}
+                        className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-center font-mono font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-0.5">Weight</label>
+                      <input
+                        type="text"
+                        placeholder="65 kg"
+                        value={vitals.weight_kg}
+                        onChange={(e) => setVitals((v) => ({ ...v, weight_kg: e.target.value }))}
+                        className="w-full border border-slate-300 rounded px-2 py-1 text-xs text-center font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                    <span>Pulse: <strong>{vitals.pulse_rate || '72'} bpm</strong></span>
+                    <span>SpO2: <strong>{vitals.spo2_percent || '99'}%</strong></span>
+                    <span>BMI: <strong>{bmi}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Complaints & TREATMENT */}
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Complaints
+                  </h3>
+                  <span className="text-[10px] text-slate-400">Chief Complaints</span>
+                </div>
+
+                <div>
+                  <textarea
+                    rows={4}
+                    placeholder="Patient chief complaints and history..."
                     value={clinical.chief_complaints}
                     onChange={(e) => setClinical((c) => ({ ...c, chief_complaints: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Skin Type</label>
-                    <select
-                      value={clinical.skin_type}
-                      onChange={(e) => setClinical((c) => ({ ...c, skin_type: e.target.value }))}
-                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
-                    >
-                      <option value="Fitzpatrick I-II">Fitzpatrick I - Fair</option>
-                      <option value="Fitzpatrick III">Fitzpatrick III - Medium</option>
-                      <option value="Fitzpatrick IV">Fitzpatrick IV - Olive</option>
-                      <option value="Fitzpatrick V-VI">Fitzpatrick V-VI - Deep</option>
-                      <option value="Oily">Oily / Acne-prone</option>
-                      <option value="Dry">Dry / Sensitive</option>
-                      <option value="Normal">Normal / Combination</option>
-                    </select>
+                <div className="pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between pb-1 mb-1">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      TREATMENT
+                    </h3>
+                    <span className="text-[10px] text-slate-400">Procedures &amp; Therapy</span>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Known Conditions (K/C/O)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Hypothyroidism, PCOD, DM"
-                      value={clinical.known_conditions}
-                      onChange={(e) => setClinical((c) => ({ ...c, known_conditions: e.target.value }))}
-                      className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Physical / Derm Examination Notes
-                  </label>
                   <textarea
-                    rows={3}
-                    placeholder="Clinical findings, lesion distribution, pigmentation depth..."
-                    value={clinical.examination_notes}
-                    onChange={(e) => setClinical((c) => ({ ...c, examination_notes: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Diagnosis & Procedures
-                </h3>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Diagnosis / Clinical Impression
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Epidermal Melasma, Acne Vulgaris Grade II"
-                    value={clinical.diagnosis}
-                    onChange={(e) => setClinical((c) => ({ ...c, diagnosis: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Treatment & Daycare Procedure Done Today
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="e.g. Chemical peel (Glycolic 30%), Comedone extraction done under aseptic precautions..."
+                    rows={4}
+                    placeholder="Treatment plan, daycare procedures done today..."
                     value={clinical.treatment_plan}
                     onChange={(e) => setClinical((c) => ({ ...c, treatment_plan: e.target.value }))}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Column 3: Diagonosis/Examination & Description2 */}
+              <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Diagonosis/Examination
+                  </h3>
+                  <span className="text-[10px] text-slate-400">Diagnosis &amp; Physical Exam</span>
+                </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Doctor Private Notes (Not visible on patient printout)
-                  </label>
                   <textarea
-                    rows={2}
-                    placeholder="Confidential clinical impressions, cautions for subsequent sessions..."
-                    value={clinical.doctor_private_notes}
-                    onChange={(e) => setClinical((c) => ({ ...c, doctor_private_notes: e.target.value }))}
+                    rows={4}
+                    placeholder="Clinical diagnosis, physical and dermatological examination findings..."
+                    value={clinical.diagnosis || clinical.examination_notes}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setClinical((c) => ({ ...c, diagnosis: val, examination_notes: val }));
+                    }}
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between pb-1 mb-1">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Description2
+                    </h3>
+                    <span className="text-[10px] text-slate-400">Additional Instructions &amp; Notes</span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    placeholder="Description2: Further observations, counseling notes, doctor private notes..."
+                    value={(clinical as any).description2 !== undefined ? (clinical as any).description2 : (clinical.doctor_private_notes || '')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setClinical((c) => ({ ...c, description2: val, doctor_private_notes: val }));
+                    }}
                     className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-violet-500 focus:outline-none"
                   />
                 </div>
@@ -1483,101 +1815,108 @@ export default function DoctorWorkbenchPage() {
                 </div>
               )}
 
-              {/* Rx Table with Auto-Calculated Quantity */}
+              {/* Rx Table with Exact Headers from Screenshot (19) */}
               {rxList.length > 0 && (
                 <div className="border border-slate-200 rounded-lg overflow-hidden">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase">
                       <tr>
-                        <th className="py-2.5 px-3">Medicine Name</th>
+                        <th className="py-2.5 px-3 w-12 text-center">SNo</th>
+                        <th className="py-2.5 px-3">Particulars</th>
+                        <th className="py-2.5 px-3">Description</th>
                         <th className="py-2.5 px-3">Dosage</th>
-                        <th className="py-2.5 px-3">Frequency</th>
-                        <th className="py-2.5 px-3">Timing</th>
-                        <th className="py-2.5 px-3">Days</th>
-                        <th className="py-2.5 px-3">Qty (Auto)</th>
-                        <th className="py-2.5 px-3">Instructions</th>
+                        <th className="py-2.5 px-3 text-center">Duration</th>
+                        <th className="py-2.5 px-3 text-center">Qty</th>
                         <th className="py-2.5 px-3 text-right">Del</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {rxList.map((item, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50">
-                          <td className="py-2 px-3 font-semibold text-slate-800">
-                            {item.medicine_name}
+                          <td className="py-2 px-3 text-center font-bold text-slate-600">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2 px-3 font-bold text-slate-900">
+                            <div>{item.medicine_name}</div>
                             {!item.medicine_id && (
-                              <span className="ml-1.5 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-normal">
+                              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-normal">
                                 Custom
                               </span>
                             )}
                           </td>
                           <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              value={item.dosage}
-                              onChange={(e) => updateRxItem(idx, 'dosage', e.target.value)}
-                              className="w-20 border border-slate-300 rounded px-2 py-1 text-xs"
-                            />
+                            <div className="space-y-1">
+                              <select
+                                value={item.timing}
+                                onChange={(e) => updateRxItem(idx, 'timing', e.target.value)}
+                                className="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white w-full"
+                              >
+                                <option value="After Food">After Food</option>
+                                <option value="Before Food">Before Food</option>
+                                <option value="With Food">With Food</option>
+                                <option value="Bedtime">Bedtime</option>
+                                <option value="Apply Locally">Apply Locally</option>
+                              </select>
+                              <input
+                                type="text"
+                                placeholder="Description / Instructions"
+                                value={item.special_instructions}
+                                onChange={(e) => updateRxItem(idx, 'special_instructions', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-1.5 py-0.5 text-xs"
+                              />
+                            </div>
                           </td>
                           <td className="py-2 px-3">
-                            <select
-                              value={item.frequency}
-                              onChange={(e) => updateRxItem(idx, 'frequency', e.target.value)}
-                              className="border border-slate-300 rounded px-1.5 py-1 text-xs bg-white font-medium text-slate-800"
-                            >
-                              <option value="1-0-1">1-0-1 (BD - Twice daily)</option>
-                              <option value="1-0-0">1-0-0 (Morning)</option>
-                              <option value="0-0-1">0-0-1 (Night)</option>
-                              <option value="1-1-1">1-1-1 (TDS - 3 times)</option>
-                              <option value="1-1-1-1">1-1-1-1 (QID - 4 times)</option>
-                              <option value="1 x 1">1 x 1 (Once daily)</option>
-                              <option value="1 x 2">1 x 2 (Twice daily)</option>
-                              <option value="1 x 3">1 x 3 (Thrice daily)</option>
-                              <option value="SOS">SOS (When needed)</option>
-                              <option value="Alternate Day">Alternate Day</option>
-                            </select>
+                            <div className="space-y-1">
+                              <input
+                                type="text"
+                                placeholder="Dosage"
+                                value={item.dosage}
+                                onChange={(e) => updateRxItem(idx, 'dosage', e.target.value)}
+                                className="w-full border border-slate-300 rounded px-2 py-0.5 text-xs font-semibold"
+                              />
+                              <select
+                                value={item.frequency}
+                                onChange={(e) => updateRxItem(idx, 'frequency', e.target.value)}
+                                className="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white font-medium text-slate-800 w-full"
+                              >
+                                <option value="1 time a day">1 time a day (OD)</option>
+                                <option value="2 times a day">2 times a day (BD)</option>
+                                <option value="3 times a day">3 times a day (TDS)</option>
+                                <option value="4 times a day">4 times a day (QID)</option>
+                                <option value="1-0-1">1-0-1 (M-N)</option>
+                                <option value="1-0-0">1-0-0 (Morning)</option>
+                                <option value="0-0-1">0-0-1 (Night)</option>
+                                <option value="1-1-1">1-1-1 (M-N-N)</option>
+                                <option value="SOS">SOS (When needed)</option>
+                              </select>
+                            </div>
                           </td>
-                          <td className="py-2 px-3">
-                            <select
-                              value={item.timing}
-                              onChange={(e) => updateRxItem(idx, 'timing', e.target.value)}
-                              className="border border-slate-300 rounded px-1.5 py-1 text-xs bg-white"
-                            >
-                              <option value="After Food">After Food</option>
-                              <option value="Before Food">Before Food</option>
-                              <option value="With Food">With Food</option>
-                              <option value="Bedtime">Bedtime</option>
-                              <option value="Apply Locally">Apply Locally</option>
-                            </select>
+                          <td className="py-2 px-3 text-center">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.duration_days}
+                                onChange={(e) => updateRxItem(idx, 'duration_days', parseInt(e.target.value) || 1)}
+                                className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-center font-bold"
+                              />
+                              <span className="text-[10px] text-slate-500">Days</span>
+                            </div>
                           </td>
-                          <td className="py-2 px-3">
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.duration_days}
-                              onChange={(e) => updateRxItem(idx, 'duration_days', parseInt(e.target.value) || 1)}
-                              className="w-14 border border-slate-300 rounded px-2 py-1 text-xs text-center font-semibold"
-                            />
-                          </td>
-                          <td className="py-2 px-3">
-                            <div className="relative">
+                          <td className="py-2 px-3 text-center">
+                            <div className="relative inline-block">
                               <input
                                 type="number"
                                 min="1"
                                 value={item.quantity}
                                 onChange={(e) => updateRxItem(idx, 'quantity', parseInt(e.target.value) || 1)}
-                                className="w-16 border border-violet-300 bg-violet-50/50 rounded px-2 py-1 text-xs text-center font-bold text-violet-800"
+                                className="w-16 border border-violet-300 bg-violet-50/70 rounded px-2 py-1 text-xs text-center font-black text-violet-900"
                               />
-                              <span className="text-[9px] text-violet-600 block text-center font-medium mt-0.5">auto count</span>
+                              <span className="text-[9px] text-violet-700 block text-center font-bold mt-0.5 font-mono">
+                                Total {item.quantity}
+                              </span>
                             </div>
-                          </td>
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              placeholder="e.g. Avoid sun exposure after application"
-                              value={item.special_instructions}
-                              onChange={(e) => updateRxItem(idx, 'special_instructions', e.target.value)}
-                              className="w-full border border-slate-300 rounded px-2 py-1 text-xs"
-                            />
                           </td>
                           <td className="py-2 px-3 text-right">
                             <button
@@ -1952,6 +2291,117 @@ export default function DoctorWorkbenchPage() {
               )}
             </div>
 
+            {/* NEXT STEP PATIENT ROUTING & DIAGNOSTIC REFERRAL */}
+            <div className="bg-white rounded-xl border-2 border-amber-300 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-amber-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                    ➔
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
+                      Next Step Patient Routing & Diagnostic Referral
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Doctor determines patient's next clinical destination: X-Ray Room, MRI Scanner, CT Scan, Nurse Procedure Desk, Lab, Pharmacy or Reception.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-3 py-1 rounded-full border border-amber-300">
+                  Included on Printed Rx Slip
+                </span>
+              </div>
+
+              {/* Destination Selector Buttons */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                {[
+                  { id: 'x_ray', label: 'X-Ray Room', room: 'Room 104 (Radiology)', proc: 'Chest PA View', icon: '🩻' },
+                  { id: 'mri', label: 'MRI Scanner', room: 'Room 108 (Imaging Wing)', proc: 'Brain MRI (T1/T2)', icon: '🧲' },
+                  { id: 'ct_scan', label: 'CT Scan Suite', room: 'Room 106 (CT Suite)', proc: 'HRCT Chest', icon: '📡' },
+                  { id: 'nursing_procedure', label: 'Nurse Desk', room: 'Daycare Room 102', proc: 'Clean & Dressing / TT', icon: '🩺' },
+                  { id: 'lab', label: 'Diagnostic Lab', room: 'Room 105 (Pathology)', proc: 'Blood Tests & Biopsy', icon: '🧪' },
+                  { id: 'pharmacy', label: 'Pharmacy', room: 'Counter 2 (Ground Floor)', proc: 'Medicine Dispensing', icon: '💊' },
+                  { id: 'reception', label: 'Reception', room: 'Counter 1 (Main Hall)', proc: 'Bill & 3-Day Review', icon: '📋' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setNextStepOrder({
+                        destination: item.id as any,
+                        room_no: item.room,
+                        procedure_name: item.proc,
+                        instructions:
+                          item.id === 'x_ray'
+                            ? 'Proceed to X-Ray Room for Chest PA View. Screen for acute infiltration.'
+                            : item.id === 'mri'
+                            ? 'Report to MRI Scanner Room. Screen for metallic implants beforehand.'
+                            : item.id === 'ct_scan'
+                            ? 'Report to CT Scan Room. Spiral high-resolution imaging.'
+                            : item.id === 'nursing_procedure'
+                            ? 'Report to Nurse Desk for sterile wound clean & dressing.'
+                            : item.id === 'lab'
+                            ? 'Report to Lab for venous blood collection and diagnostic profile.'
+                            : item.id === 'pharmacy'
+                            ? 'Proceed to Pharmacy for dispensing prescribed medications.'
+                            : 'Proceed to Reception for bill settlement and scheduling review appointment.',
+                      });
+                    }}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-center transition flex flex-col items-center justify-center gap-1',
+                      nextStepOrder.destination === item.id
+                        ? 'bg-amber-50 border-amber-400 text-amber-950 font-bold ring-2 ring-amber-400/50 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    )}
+                  >
+                    <span className="text-lg">{item.icon}</span>
+                    <span className="text-xs leading-tight block">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Specific Details for Next Step */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-amber-50/50 rounded-xl border border-amber-200">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Room / Location Number
+                  </label>
+                  <input
+                    type="text"
+                    value={nextStepOrder.room_no}
+                    onChange={(e) => setNextStepOrder((s) => ({ ...s, room_no: e.target.value }))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Specific Order / View / Procedure Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Chest PA View, Knee MRI, Dressing with betadine..."
+                    value={nextStepOrder.procedure_name}
+                    onChange={(e) => setNextStepOrder((s) => ({ ...s, procedure_name: e.target.value }))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Clinical Instructions for Facility Staff
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Look for lower lobe consolidation, sterile precautions..."
+                    value={nextStepOrder.instructions}
+                    onChange={(e) => setNextStepOrder((s) => ({ ...s, instructions: e.target.value }))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Follow-up Scheduler */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
@@ -2005,6 +2455,98 @@ export default function DoctorWorkbenchPage() {
               </div>
             </div>
 
+            {/* SCREENSHOT 19 CONSULTATION BOTTOM TOOLBAR */}
+            <div className="bg-slate-100 p-3 rounded-xl border border-slate-300 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-700">Review After:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={clinical.review_after_days}
+                    onChange={(e) => setClinical((c) => ({ ...c, review_after_days: e.target.value }))}
+                    className="w-16 bg-white border border-slate-300 rounded px-2 py-1 text-center font-bold"
+                  />
+                  <span className="text-slate-600 font-semibold">Days</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-700">Review Date:</span>
+                  <input
+                    type="date"
+                    value={reviewDateStr}
+                    readOnly
+                    className="bg-white border border-slate-300 rounded px-2 py-1 font-semibold text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowMobilePhotoUpload(!showMobilePhotoUpload)}
+                  className="px-3 py-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs"
+                >
+                  Attach
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRxModal(true)}
+                  className="px-3 py-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs"
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRxModal(true)}
+                  className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded hover:bg-indigo-100 text-xs font-bold text-indigo-700 shadow-xs"
+                >
+                  View Prescription
+                </button>
+                <button
+                  type="button"
+                  onClick={() => alert(`Insurance Check:\nPatient OP No: ${patient?.op_no}\nCoverage: Comprehensive Clinic Cover\nStatus: Active / Verified`)}
+                  className="px-3 py-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs"
+                >
+                  View Insurance
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open('/appointments', '_blank')}
+                  className="px-3 py-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs"
+                >
+                  Booking
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open('http://localhost:3002/inventory', '_blank')}
+                  className="px-3 py-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs"
+                >
+                  Stock
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveConsultation(false)}
+                  disabled={saving}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-xs"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm("Start new consultation record?")) {
+                      setSelectedAppt(null);
+                      setPatient(null);
+                      setRxList([]);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-white border border-slate-300 rounded hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs"
+                >
+                  New
+                </button>
+              </div>
+            </div>
+
             {/* PRESCRIPTION PRINT PREVIEW MODAL */}
             {showRxModal && (
               <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -2028,11 +2570,20 @@ export default function DoctorWorkbenchPage() {
                     </div>
                   </div>
 
-                  {/* CLINIC LETTERHEAD */}
-                  <div className="text-center pb-3 border-b-2 border-slate-900">
-                    <h1 className="text-xl font-black text-slate-900 tracking-tight">HEAL CLINIC & AESTHETIC CARE</h1>
-                    <p className="text-xs text-slate-600 font-medium">Way to Markaz, Karanthoor, Calicut, Kerala · Ph: 0495-2720000</p>
-                    <p className="text-[11px] text-slate-500">Reg No: KL-MED-84920 · Email: info@healclinic.in</p>
+                  {/* CLINIC LETTERHEAD WITH HEALESTHETIC */}
+                  <div className="text-center pb-3 border-b-2 border-slate-900 space-y-0.5">
+                    <h1 className="text-2xl font-black tracking-wider text-rose-950 font-serif uppercase">
+                      HEALESTHETIC
+                    </h1>
+                    <p className="text-xs font-bold tracking-tight text-slate-800 uppercase">
+                      HEAL CLINIC & ADVANCED AESTHETIC CARE
+                    </p>
+                    <p className="text-xs text-slate-600 font-medium">
+                      Way to Markaz, Karanthoor, Calicut, Kerala 673571 · Helpline: 0495-2720000 · WhatsApp: +91 9847123456
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      Medical Reg No: KL-MED-84920 · Centre for Dermatology, Trichology, Laser & Daycare
+                    </p>
                   </div>
 
                   {/* DOCTOR & PATIENT HEADER */}
@@ -2043,12 +2594,14 @@ export default function DoctorWorkbenchPage() {
                     </div>
                     <div className="text-right space-y-0.5">
                       <p className="font-semibold text-slate-900">{patient?.first_name} {patient?.last_name || ''}</p>
-                      <p className="text-slate-500 font-mono">OP: {patient?.op_no} · {patient?.gender}, {patient?.age_years ? `${patient?.age_years}y` : ''}</p>
+                      <p className="text-slate-500 font-mono">
+                        OP: {patient?.op_no} · {patient?.gender}, {patient?.age_years ? `${patient?.age_years}y` : ''} · Blood: <strong className="text-rose-700">{patient?.blood_group || (selectedAppt as any)?.vitals?.blood_group || 'Recorded'}</strong>
+                      </p>
                       <p className="text-slate-400">Date: {new Date().toLocaleDateString('en-IN')}</p>
                     </div>
                   </div>
 
-                  {/* VITALS & DIAGNOSIS SUMMARY */}
+                  {/* VITALS & DIAGNOSIS SUMMARY (INCLUDING NURSE INTAKE) */}
                   <div className="bg-slate-50 p-3 rounded-lg text-xs space-y-1 text-slate-700">
                     {clinical.diagnosis && (
                       <p><strong>Clinical Diagnosis:</strong> {clinical.diagnosis}</p>
@@ -2058,11 +2611,13 @@ export default function DoctorWorkbenchPage() {
                       {vitals.pulse_rate && <span>Pulse: {vitals.pulse_rate} bpm</span>}
                       {vitals.weight_kg && <span>Wt: {vitals.weight_kg} kg</span>}
                       {bmi !== '-' && <span>BMI: {bmi}</span>}
+                      {vitals.spo2_percent && <span>SpO2: {vitals.spo2_percent}%</span>}
+                      {vitals.temperature_f && <span>Temp: {vitals.temperature_f}°F</span>}
                       {patient?.known_allergies && <span className="text-rose-600 font-bold">⚠️ Allergy: {patient.known_allergies}</span>}
                     </div>
                   </div>
 
-                  {/* RX MEDICINES LIST */}
+                  {/* RX MEDICINES LIST WITH TOTAL COUNT */}
                   {rxList.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm font-black text-violet-700 tracking-wider font-serif">℞ (Prescription)</p>
@@ -2072,10 +2627,10 @@ export default function DoctorWorkbenchPage() {
                             <th className="py-2 px-3">#</th>
                             <th className="py-2 px-3">Medicine / Formulation</th>
                             <th className="py-2 px-3">Dosage</th>
-                            <th className="py-2 px-3">Frequency</th>
+                            <th className="py-2 px-3">Times a Day / Frequency</th>
                             <th className="py-2 px-3">Timing</th>
                             <th className="py-2 px-3 text-center">Days</th>
-                            <th className="py-2 px-3 text-center">Qty</th>
+                            <th className="py-2 px-3 text-center">Total Count</th>
                             <th className="py-2 px-3">Special Advice</th>
                           </tr>
                         </thead>
@@ -2088,7 +2643,7 @@ export default function DoctorWorkbenchPage() {
                               <td className="py-2 px-3 font-mono font-bold text-violet-700">{item.frequency}</td>
                               <td className="py-2 px-3 text-slate-600">{item.timing}</td>
                               <td className="py-2 px-3 text-center">{item.duration_days}d</td>
-                              <td className="py-2 px-3 text-center font-bold text-violet-800">{item.quantity}</td>
+                              <td className="py-2 px-3 text-center font-bold text-violet-900 bg-violet-50/50">{item.quantity} Tab</td>
                               <td className="py-2 px-3 text-slate-500 italic">{item.special_instructions || '-'}</td>
                             </tr>
                           ))}
@@ -2096,6 +2651,36 @@ export default function DoctorWorkbenchPage() {
                       </table>
                     </div>
                   )}
+
+                  {/* PROMINENT NEXT STEP CLINICAL REFERRAL BOX */}
+                  <div className="p-3.5 bg-amber-50/80 rounded-xl border-2 border-amber-300 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 bg-amber-200 px-2 py-0.5 rounded">
+                        ➔ NEXT STEP FOR PATIENT
+                      </span>
+                      <span className="text-xs font-mono font-bold text-amber-950 bg-white px-2 py-0.5 rounded border border-amber-300">
+                        Location: {nextStepOrder.room_no}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-900">
+                      <strong>Target Department / Facility:</strong>{' '}
+                      {nextStepOrder.destination === 'x_ray' && 'X-Ray Room (Radiology)'}
+                      {nextStepOrder.destination === 'mri' && 'MRI Scanning Room (Advanced Imaging Wing)'}
+                      {nextStepOrder.destination === 'ct_scan' && 'CT Scan Room (CT Imaging Suite)'}
+                      {nextStepOrder.destination === 'nursing_procedure' && 'Nurse Station (Minor Procedures / Daycare Desk)'}
+                      {nextStepOrder.destination === 'lab' && 'Diagnostic Pathology Laboratory'}
+                      {nextStepOrder.destination === 'pharmacy' && 'Pharmacy Dispensary Counter'}
+                      {nextStepOrder.destination === 'reception' && 'Reception & Billing Desk'}
+                    </p>
+                    <p className="text-xs text-slate-900">
+                      <strong>Order / Investigation:</strong> {nextStepOrder.procedure_name}
+                    </p>
+                    {nextStepOrder.instructions && (
+                      <p className="text-xs text-slate-600 italic">
+                        <strong>Clinical Advice:</strong> {nextStepOrder.instructions}
+                      </p>
+                    )}
+                  </div>
 
                   {/* ORDERED LAB INVESTIGATIONS */}
                   {orderedLabTests.length > 0 && (

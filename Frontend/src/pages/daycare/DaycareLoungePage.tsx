@@ -19,13 +19,44 @@ import {
   Receipt,
   UserPlus,
   Phone,
-  User
+  User,
+  Heart,
+  Scale,
+  Droplet,
+  ArrowRight,
+  Thermometer
 } from 'lucide-react';
-import { daycareApi, patientsApi, nursingApi } from '@/api';
+import { daycareApi, patientsApi, nursingApi, appointmentsApi, mastersApi, subscribeToDbChanges } from '@/api';
 import { STANDARD_NURSING_PROCEDURES } from '@/lib/mockData';
 
 export default function DaycareLoungePage() {
   const [activeTab, setActiveTab] = useState<'nurse_station' | 'daycare_beds'>('nurse_station');
+
+  // Reception Passed Queue & Appointments State
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loadingAppts, setLoadingAppts] = useState(true);
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
+
+  // Nurse Clinical Intake & Vitals Modal State
+  const [selectedNurseAppt, setSelectedNurseAppt] = useState<any | null>(null);
+  const [vitalsPatient, setVitalsPatient] = useState<any | null>(null);
+  const [showNurseVitalsModal, setShowNurseVitalsModal] = useState(false);
+  const [savingVitals, setSavingVitals] = useState(false);
+  const [intakeForm, setIntakeForm] = useState({
+    age_years: '',
+    blood_group: 'B+',
+    weight_kg: '62',
+    height_cm: '165',
+    bp_systolic: '120',
+    bp_diastolic: '80',
+    pulse_rate: '74',
+    temperature_f: '98.4',
+    spo2_percent: '99',
+    blood_sugar: '',
+    triage_notes: '',
+    doctor_id: '',
+    doctor_name: '',
+  });
 
   // Beds State
   const [beds, setBeds] = useState<any[]>([]);
@@ -87,6 +118,20 @@ export default function DaycareLoungePage() {
     },
   });
 
+  // Load Appointments from Reception Queue
+  const loadAppointments = async () => {
+    setLoadingAppts(true);
+    try {
+      const res = await appointmentsApi.queue();
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setAppointments(list);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingAppts(false);
+    }
+  };
+
   // Load Beds
   const loadBeds = async () => {
     setLoadingBeds(true);
@@ -116,6 +161,19 @@ export default function DaycareLoungePage() {
   useEffect(() => {
     loadBeds();
     loadProcedures();
+    loadAppointments();
+
+    mastersApi.doctors().then((res) => {
+      const docs = Array.isArray(res) ? res : (res?.data || []);
+      setDoctorsList(docs);
+    }).catch(() => {});
+
+    const unsub = subscribeToDbChanges(() => {
+      loadAppointments();
+      loadProcedures();
+      loadBeds();
+    });
+    return () => unsub();
   }, []);
 
   // Bed Handlers
@@ -296,6 +354,115 @@ export default function DaycareLoungePage() {
   const directWalkinsCount = procedures.filter((p) => p.referred_by === 'Direct Walk-in').length;
   const totalBilled = completedProcedures.reduce((sum, p) => sum + (Number(p.price) || 0), 0);
 
+  const waitingForNurse = appointments.filter(
+    (a) => a.status === 'With-Nurse' || a.status === 'Nurse-Station'
+  );
+  const passedToDoctor = appointments.filter(
+    (a) => a.status === 'Passed-to-Doctor' || a.status === 'Called' || a.status === 'In-Consult'
+  );
+
+  const getBmiCategory = (bmiVal: number) => {
+    if (isNaN(bmiVal) || bmiVal <= 0) return { label: 'N/A', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+    if (bmiVal < 18.5) return { label: 'Underweight', color: 'bg-sky-100 text-sky-800 border-sky-200' };
+    if (bmiVal <= 24.9) return { label: 'Normal', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+    if (bmiVal <= 29.9) return { label: 'Overweight', color: 'bg-amber-100 text-amber-800 border-amber-200' };
+    return { label: 'Obese', color: 'bg-rose-100 text-rose-800 border-rose-200' };
+  };
+
+  const handleOpenVitalsModal = async (appt: any) => {
+    setSelectedNurseAppt(appt);
+    try {
+      const pRes = await patientsApi.get(appt.patient_id);
+      const pat = pRes?.data || pRes;
+      setVitalsPatient(pat);
+
+      let initialAge = '';
+      if (pat?.age_years) {
+        initialAge = String(pat.age_years);
+      } else if (pat?.date_of_birth) {
+        const birthDate = new Date(pat.date_of_birth);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+        initialAge = String(Math.max(0, age));
+      }
+
+      setIntakeForm({
+        age_years: initialAge,
+        blood_group: pat?.blood_group || 'B+',
+        weight_kg: appt.vitals?.weight_kg ? String(appt.vitals.weight_kg) : '62',
+        height_cm: appt.vitals?.height_cm ? String(appt.vitals.height_cm) : '165',
+        bp_systolic: appt.vitals?.bp_systolic ? String(appt.vitals.bp_systolic) : '120',
+        bp_diastolic: appt.vitals?.bp_diastolic ? String(appt.vitals.bp_diastolic) : '80',
+        pulse_rate: appt.vitals?.pulse_rate ? String(appt.vitals.pulse_rate) : '74',
+        temperature_f: appt.vitals?.temperature_f ? String(appt.vitals.temperature_f) : '98.4',
+        spo2_percent: appt.vitals?.spo2_percent ? String(appt.vitals.spo2_percent) : '99',
+        blood_sugar: appt.vitals?.blood_sugar || '',
+        triage_notes: appt.vitals?.notes || '',
+        doctor_id: appt.doctor_id || (doctorsList[0]?.id || 'doc-001'),
+        doctor_name: appt.doctor_name || (doctorsList[0]?.full_name || 'Dr. Ananya Nair'),
+      });
+      setShowNurseVitalsModal(true);
+    } catch (err) {
+      console.error(err);
+      alert('Unable to load patient profile.');
+    }
+  };
+
+  const handleSaveVitalsAndPass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedNurseAppt) return;
+    setSavingVitals(true);
+    try {
+      const weightNum = parseFloat(intakeForm.weight_kg) || 0;
+      const heightM = (parseFloat(intakeForm.height_cm) || 0) / 100;
+      const calcBmi = weightNum > 0 && heightM > 0 ? (weightNum / (heightM * heightM)).toFixed(1) : '-';
+
+      // 1. Update patient profile in DB (age, blood group)
+      await patientsApi.update(selectedNurseAppt.patient_id, {
+        age_years: parseInt(intakeForm.age_years) || undefined,
+        blood_group: intakeForm.blood_group,
+      });
+
+      // 2. Update appointment with vitals & assigned doctor
+      const matchedDoc = doctorsList.find((d) => d.id === intakeForm.doctor_id);
+      const docName = matchedDoc?.full_name || intakeForm.doctor_name || selectedNurseAppt.doctor_name || 'Dr. Ananya Nair';
+
+      await appointmentsApi.update(selectedNurseAppt.id, {
+        doctor_id: intakeForm.doctor_id || selectedNurseAppt.doctor_id,
+        doctor_name: docName,
+        vitals: {
+          bp_systolic: intakeForm.bp_systolic,
+          bp_diastolic: intakeForm.bp_diastolic,
+          pulse_rate: intakeForm.pulse_rate,
+          temperature_f: intakeForm.temperature_f,
+          spo2_percent: intakeForm.spo2_percent,
+          weight_kg: intakeForm.weight_kg,
+          height_cm: intakeForm.height_cm,
+          bmi: calcBmi,
+          blood_group: intakeForm.blood_group,
+          blood_sugar: intakeForm.blood_sugar,
+          notes: intakeForm.triage_notes,
+        },
+        vitals_recorded_by: 'Staff Nurse Anjali Pillai',
+      });
+
+      // 3. Update status to 'Passed-to-Doctor'
+      await appointmentsApi.updateStatus(selectedNurseAppt.id, 'Passed-to-Doctor');
+
+      setShowNurseVitalsModal(false);
+      setSelectedNurseAppt(null);
+      alert(`Patient vitals & BMI saved! Successfully passed to ${docName}'s Cabin.`);
+      await loadAppointments();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save vitals and pass patient.');
+    } finally {
+      setSavingVitals(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Occupied':
@@ -384,60 +551,226 @@ export default function DaycareLoungePage() {
       {/* TAB 1: NURSE MINOR PROCEDURES & VITALS STATION */}
       {activeTab === 'nurse_station' && (
         <div className="space-y-6">
-          {/* Quick Metrics Bar */}
+          {/* Quick Metrics Bar with Live Pipeline Status */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-rose-700">Passed from Receptionist</p>
+                <h3 className="text-2xl font-black text-rose-950 mt-0.5">{waitingForNurse.length}</h3>
+                <p className="text-[10px] text-rose-600 mt-0.5">Waiting for Nurse Intake & Vitals</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-rose-200/80 text-rose-900 flex items-center justify-center font-bold">
+                <Clock className="w-5 h-5 text-rose-700" />
+              </div>
+            </div>
+
+            <div className="bg-sky-50/70 border border-sky-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Passed to Doctor Cabin</p>
+                <h3 className="text-2xl font-black text-sky-950 mt-0.5">{passedToDoctor.length}</h3>
+                <p className="text-[10px] text-sky-600 mt-0.5">Vitals verified, in doctor queue</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-sky-200/80 text-sky-900 flex items-center justify-center font-bold">
+                <Stethoscope className="w-5 h-5 text-sky-700" />
+              </div>
+            </div>
+
+            <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Doctor-Referred Waiting</p>
-                <h3 className="text-2xl font-black text-amber-900 mt-0.5">{referredPending.length}</h3>
-                <p className="text-[10px] text-amber-600 mt-0.5">Orders from Doctor Workbench</p>
+                <h3 className="text-2xl font-black text-amber-950 mt-0.5">{referredPending.length}</h3>
+                <p className="text-[10px] text-amber-600 mt-0.5">Clean & Dressing, TT, Care</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-200/70 text-amber-900 flex items-center justify-center">
-                <Stethoscope className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Direct Walk-ins Handled</p>
-                <h3 className="text-2xl font-black text-emerald-900 mt-0.5">{directWalkinsCount}</h3>
-                <p className="text-[10px] text-emerald-600 mt-0.5">Bypassed Reception Desk</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-200/70 text-emerald-900 flex items-center justify-center">
-                <UserCheck className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center font-bold">
+                <Scissors className="w-5 h-5 text-amber-700" />
               </div>
             </div>
 
-            <div className="bg-sky-50/60 border border-sky-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-4 flex items-center justify-between shadow-2xs">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-sky-700">Procedures Done Today</p>
-                <h3 className="text-2xl font-black text-sky-900 mt-0.5">{completedProcedures.length}</h3>
-                <p className="text-[10px] text-sky-600 mt-0.5">Dressing, Injections, Suture</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-purple-700">Direct Walk-ins Handled</p>
+                <h3 className="text-2xl font-black text-purple-950 mt-0.5">{directWalkinsCount}</h3>
+                <p className="text-[10px] text-purple-600 mt-0.5">Bypassed Reception Desk</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-sky-200/70 text-sky-900 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="bg-purple-50/60 border border-purple-200 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-purple-700">Procedure Revenue</p>
-                <h3 className="text-2xl font-black text-purple-900 mt-0.5 font-mono">₹{totalBilled.toLocaleString()}</h3>
-                <p className="text-[10px] text-purple-600 mt-0.5">Auto-generated bills</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-purple-200/70 text-purple-900 flex items-center justify-center">
-                <Receipt className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-purple-200/80 text-purple-900 flex items-center justify-center font-bold">
+                <UserCheck className="w-5 h-5 text-purple-700" />
               </div>
             </div>
           </div>
 
-          {/* Section 1: Doctor-Referred Patients Queue */}
+          {/* Section 1: Patients Passed from Receptionist (Awaiting Nurse Vitals & Intake) */}
+          <div className="bg-white rounded-xl border border-rose-200 shadow-xs overflow-hidden">
+            <div className="px-5 py-4 border-b border-rose-100 flex items-center justify-between bg-rose-50/50">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-rose-700" />
+                <h2 className="font-bold text-slate-900 text-sm">
+                  1. Patients Passed from Receptionist — Awaiting Nurse Intake & Vitals ({waitingForNurse.length})
+                </h2>
+              </div>
+              <span className="text-[11px] text-rose-800 font-semibold bg-rose-100/80 px-2.5 py-0.5 rounded-full border border-rose-200">
+                Receptionist only took primary details; Nurse must take Age, Blood Group, Weight, Height & BMI
+              </span>
+            </div>
+
+            {waitingForNurse.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                No patients waiting from receptionist right now. All caught up!
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {waitingForNurse.map((appt) => (
+                  <div
+                    key={appt.id}
+                    className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-rose-50/30 transition"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs bg-rose-100 text-rose-900 px-2 py-0.5 rounded font-black">
+                          Token #{appt.token_no}
+                        </span>
+                        <span className="font-bold text-slate-900 text-sm">{appt.patient_name}</span>
+                        <span className="font-mono text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold">
+                          {appt.op_no}
+                        </span>
+                        {appt.phone && (
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-slate-400" /> {appt.phone}
+                          </span>
+                        )}
+                        <span className="text-[10px] uppercase font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                          Waiting for Nurse Vitals
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                        <span>Target Doctor: <strong className="text-slate-900">{appt.doctor_name || 'Dr. Ananya Nair'}</strong></span>
+                        <span>·</span>
+                        <span>Department: <strong className="text-slate-800">{appt.department_name || 'General'}</strong></span>
+                        <span>·</span>
+                        <span>Arrival: {new Date(appt.appointment_date || appt.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleOpenVitalsModal(appt)}
+                      className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-xs transition shrink-0"
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      Take Vitals & Pass to Doctor Cabin ➔
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Patients Passed to Doctor Cabin (Completed Intake) */}
+          <div className="bg-white rounded-xl border border-sky-200 shadow-xs overflow-hidden">
+            <div className="px-5 py-4 border-b border-sky-100 flex items-center justify-between bg-sky-50/50">
+              <div className="flex items-center gap-2">
+                <Stethoscope className="w-4 h-4 text-sky-700" />
+                <h2 className="font-bold text-slate-900 text-sm">
+                  2. Patients Passed to Doctor Cabin ({passedToDoctor.length})
+                </h2>
+              </div>
+              <span className="text-[11px] text-sky-800 font-medium">
+                Vitals, BMI & Blood Group recorded by Nurse; now queued in Doctor Consultation
+              </span>
+            </div>
+
+            {passedToDoctor.length === 0 ? (
+              <div className="py-6 text-center text-slate-400 text-xs">
+                No patients currently waiting in Doctor cabin queue.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase">
+                    <tr>
+                      <th className="py-2.5 px-3">Token #</th>
+                      <th className="py-2.5 px-3">Patient Name & OP</th>
+                      <th className="py-2.5 px-3">Assigned Doctor</th>
+                      <th className="py-2.5 px-3">Blood Group</th>
+                      <th className="py-2.5 px-3">BMI</th>
+                      <th className="py-2.5 px-3">BP & Pulse</th>
+                      <th className="py-2.5 px-3">Weight / Height</th>
+                      <th className="py-2.5 px-3">Doctor Status</th>
+                      <th className="py-2.5 px-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {passedToDoctor.map((appt) => {
+                      const v = appt.vitals || {};
+                      const bmiVal = parseFloat(v.bmi || '0');
+                      const bmiBadge = getBmiCategory(bmiVal);
+                      return (
+                        <tr key={appt.id} className="hover:bg-slate-50/60">
+                          <td className="py-2.5 px-3 font-mono font-bold text-sky-700">#{appt.token_no}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-bold text-slate-900 block">{appt.patient_name}</span>
+                            <span className="font-mono text-[10px] text-slate-500">{appt.op_no}</span>
+                          </td>
+                          <td className="py-2.5 px-3 font-medium text-slate-800">
+                            🩺 {appt.doctor_name || 'Dr. Ananya Nair'}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                              <Droplet className="w-3 h-3 text-rose-500" />
+                              {v.blood_group || 'Recorded'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-bold text-slate-900 font-mono mr-1.5">{v.bmi || '-'}</span>
+                            {v.bmi && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${bmiBadge.color}`}>
+                                {bmiBadge.label}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-slate-700">
+                            {v.bp_systolic ? `${v.bp_systolic}/${v.bp_diastolic} mmHg` : '120/80 mmHg'}
+                            <span className="block text-[10px] text-slate-400">
+                              Pulse: {v.pulse_rate || '74'} bpm
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600">
+                            {v.weight_kg ? `${v.weight_kg} kg` : '-'} · {v.height_cm ? `${v.height_cm} cm` : '-'}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                appt.status === 'In-Consult'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-sky-100 text-sky-800 border border-sky-200'
+                              }`}
+                            >
+                              {appt.status === 'In-Consult' ? 'In Doctor Cabin' : 'Passed to Doctor'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <button
+                              onClick={() => handleOpenVitalsModal(appt)}
+                              className="text-sky-600 hover:text-sky-800 font-semibold text-xs inline-flex items-center gap-1"
+                            >
+                              Edit Vitals
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Doctor-Referred Patients Queue */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/40">
               <div className="flex items-center gap-2">
                 <Stethoscope className="w-4 h-4 text-amber-700" />
                 <h2 className="font-bold text-slate-900 text-sm">
-                  1. Doctor-Referred Patients Waiting for Procedures ({referredPending.length})
+                  3. Doctor-Referred Patients Waiting for Procedures ({referredPending.length})
                 </h2>
               </div>
               <span className="text-[11px] text-amber-800 font-medium">
@@ -502,13 +835,13 @@ export default function DaycareLoungePage() {
             )}
           </div>
 
-          {/* Section 2: Completed Procedures Today */}
+          {/* Section 4: Completed Procedures Today */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <h2 className="font-bold text-slate-900 text-sm">
-                  2. Procedures Completed Today & Billed ({completedProcedures.length})
+                  4. Procedures Completed Today & Billed ({completedProcedures.length})
                 </h2>
               </div>
               <span className="text-[11px] text-slate-500">
@@ -1258,6 +1591,333 @@ export default function DaycareLoungePage() {
                 >
                   Confirm Bed Admission
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* NURSE CLINICAL INTAKE & VITALS MODAL */}
+      {showNurseVitalsModal && selectedNurseAppt && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-5 my-8">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Nurse Station — Clinical Intake & Vitals Desk
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Patient passed from Reception. Record vital signs, age, blood group & calculate BMI before passing to Doctor Cabin.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNurseVitalsModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Read-Only Primary Details Received from Receptionist */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-slate-600" />
+                <span>Primary Registration Details (From Reception Desk):</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Token #</span>
+                  <span className="font-mono font-black text-rose-700">Token #{selectedNurseAppt.token_no}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Patient Name</span>
+                  <span className="font-bold text-slate-900">{selectedNurseAppt.patient_name}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">OP Number</span>
+                  <span className="font-mono font-bold text-slate-800">{selectedNurseAppt.op_no}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Phone</span>
+                  <span className="font-mono text-slate-700">{selectedNurseAppt.phone || vitalsPatient?.phone || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Gender</span>
+                  <span className="font-semibold text-slate-800">{vitalsPatient?.gender || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Date of Birth</span>
+                  <span className="text-slate-700">{vitalsPatient?.date_of_birth || 'Not specified'}</span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-[10px] text-slate-400 block">Address / City</span>
+                  <span className="text-slate-700 truncate block">{vitalsPatient?.city || vitalsPatient?.address || 'Calicut'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Nurse Intake & Vitals Form */}
+            <form onSubmit={handleSaveVitalsAndPass} className="space-y-4">
+              {/* Group 1: Age, Blood Group, Weight, Height & BMI */}
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1">
+                  <Scale className="w-3.5 h-3.5 text-rose-600" />
+                  <span>1. Body Vitals & BMI Assessment</span>
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-rose-50/40 p-3.5 rounded-xl border border-rose-200/80">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Age (Years) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="125"
+                      required
+                      placeholder="e.g. 26"
+                      value={intakeForm.age_years}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, age_years: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Blood Group *
+                    </label>
+                    <select
+                      value={intakeForm.blood_group}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, blood_group: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-rose-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                    >
+                      <option value="A+">A + (Positive)</option>
+                      <option value="A-">A - (Negative)</option>
+                      <option value="B+">B + (Positive)</option>
+                      <option value="B-">B - (Negative)</option>
+                      <option value="O+">O + (Positive)</option>
+                      <option value="O-">O - (Negative)</option>
+                      <option value="AB+">AB + (Positive)</option>
+                      <option value="AB-">AB - (Negative)</option>
+                      <option value="Bombay">Bombay Group (Rare)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Weight (kg) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="300"
+                      required
+                      placeholder="e.g. 62"
+                      value={intakeForm.weight_kg}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, weight_kg: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-rose-500 focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Height (cm) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="30"
+                      max="250"
+                      required
+                      placeholder="e.g. 165"
+                      value={intakeForm.height_cm}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, height_cm: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-rose-500 focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  {/* Live Auto-Calculated BMI Banner */}
+                  <div className="col-span-2 sm:col-span-4 bg-white p-2.5 rounded-lg border border-rose-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-rose-600" />
+                      <span className="text-xs font-bold text-slate-800">
+                        Live Auto-Calculated Body Mass Index (BMI):
+                      </span>
+                    </div>
+                    {(() => {
+                      const w = parseFloat(intakeForm.weight_kg) || 0;
+                      const h = (parseFloat(intakeForm.height_cm) || 0) / 100;
+                      const bmiVal = w > 0 && h > 0 ? (w / (h * h)).toFixed(1) : '-';
+                      const badge = getBmiCategory(parseFloat(bmiVal));
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black font-mono text-slate-900">
+                            {bmiVal} {bmiVal !== '-' && <span className="text-[10px] font-normal text-slate-500">kg/m²</span>}
+                          </span>
+                          {bmiVal !== '-' && (
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${badge.color}`}>
+                              {badge.label}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Group 2: Cardiovascular & Vital Parameters */}
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1">
+                  <Heart className="w-3.5 h-3.5 text-rose-600" />
+                  <span>2. Vital Signs (BP, Pulse, Temp & SpO2)</span>
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      BP Systolic (mmHg)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="120"
+                      value={intakeForm.bp_systolic}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, bp_systolic: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-mono text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      BP Diastolic (mmHg)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="80"
+                      value={intakeForm.bp_diastolic}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, bp_diastolic: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-mono text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      Pulse (bpm)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="74"
+                      value={intakeForm.pulse_rate}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, pulse_rate: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-mono text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      Temp (°F)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="98.4"
+                      value={intakeForm.temperature_f}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, temperature_f: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-mono text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      SpO2 (%)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="99"
+                      value={intakeForm.spo2_percent}
+                      onChange={(e) => setIntakeForm((f) => ({ ...f, spo2_percent: e.target.value }))}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-mono text-center font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Group 3: Doctor Assignment & Preliminary Nurse Assessment */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Direct Patient to Doctor Cabin *
+                  </label>
+                  <select
+                    value={intakeForm.doctor_id}
+                    onChange={(e) => {
+                      const doc = doctorsList.find((d) => d.id === e.target.value);
+                      setIntakeForm((f) => ({
+                        ...f,
+                        doctor_id: e.target.value,
+                        doctor_name: doc?.full_name || '',
+                      }));
+                    }}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                  >
+                    {doctorsList.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.full_name} ({doc.specialisation || 'Consultant'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Random Blood Sugar (Optional mg/dL)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 110 mg/dL"
+                    value={intakeForm.blood_sugar}
+                    onChange={(e) => setIntakeForm((f) => ({ ...f, blood_sugar: e.target.value }))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nurse Preliminary Notes & Symptoms (For Doctor Review)
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Patient conscious, complaining of itching and erythema on face and neck for 3 days. No previous drug allergies noted."
+                    value={intakeForm.triage_notes}
+                    onChange={(e) => setIntakeForm((f) => ({ ...f, triage_notes: e.target.value }))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">
+                  Attending Staff: <strong>Nurse Anjali Pillai</strong> (Clinical Intake Station)
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNurseVitalsModal(false)}
+                    className="px-3.5 py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingVitals}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow-xs flex items-center gap-1.5 transition disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{savingVitals ? 'Saving...' : 'Save Vitals & Pass to Doctor Cabin ➔'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

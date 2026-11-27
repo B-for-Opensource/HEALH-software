@@ -10,7 +10,10 @@ import {
   LogOut,
   Sparkles,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Users,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { DEMO_HR_ACCOUNTS } from '../services/mockBackend';
 
@@ -26,7 +29,9 @@ export default function Navbar({
   expiringCredsCount,
   setActiveTab,
   onLogout,
-  onResetData
+  onResetData,
+  showStaffDetails = false,
+  setShowStaffDetails
 }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBranchMenu, setShowBranchMenu] = useState(false);
@@ -104,7 +109,32 @@ export default function Navbar({
       </div>
 
       {/* Right Actions: Web Punch, Notifications, Persona Switcher */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Toggle Staff Details & Current Staff in Dashboard */}
+        {setShowStaffDetails && (
+          <button
+            onClick={() => setShowStaffDetails(!showStaffDetails)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border shadow-xs transition-all ${
+              showStaffDetails
+                ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600 ring-2 ring-blue-200'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+            }`}
+            title="Toggle Staff Details & Headcount Operations on Dashboard"
+          >
+            {showStaffDetails ? (
+              <>
+                <EyeOff className="w-3.5 h-3.5" />
+                <span>Hide Staff Details</span>
+              </>
+            ) : (
+              <>
+                <Users className="w-3.5 h-3.5 text-blue-600" />
+                <span>Show Staff Details</span>
+              </>
+            )}
+          </button>
+        )}
+
         {/* Quick Web Punch Clock-in/Clock-out */}
         <button
           onClick={onPunch}

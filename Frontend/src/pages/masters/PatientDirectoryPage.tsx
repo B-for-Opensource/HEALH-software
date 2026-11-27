@@ -131,38 +131,208 @@ export default function PatientDirectoryPage() {
     }
   };
 
-  return (
-    <div className="p-3 sm:p-5 md:p-6 2xl:p-8 max-w-7xl 2xl:max-w-[1700px] 3xl:max-w-[2200px] mx-auto space-y-6 w-full">
-      {/* Title */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Patient Master Directory</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Complete database of registered outpatients across Karanthoor, Calicut Beach & Wayanad branches
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/reception/register')}
-          className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-xs"
-        >
-          <UserPlus className="w-4 h-4" />
-          + Register New Patient
-        </button>
-      </div>
+  // Screenshot (16) filter state
+  const [filterType, setFilterType] = useState('Alopathy');
+  const [filterOpNo, setFilterOpNo] = useState('');
+  const [filterDate, setFilterDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [filterPlace, setFilterPlace] = useState('');
+  const [filterPhone, setFilterPhone] = useState('');
+  const [filterAddress, setFilterAddress] = useState('');
+  const [filterSex, setFilterSex] = useState('');
+  const [filterAgeY, setFilterAgeY] = useState('');
+  const [filterAgeM, setFilterAgeM] = useState('');
+  const [filterAgeD, setFilterAgeD] = useState('');
+  const [filterRelation, setFilterRelation] = useState('S/O');
+  const [filterRelativeName, setFilterRelativeName] = useState('');
+  const [filterDoctor, setFilterDoctor] = useState('(All)');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
 
-      {/* Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            placeholder="Search by OP Number (e.g. KRN-00001), Patient Name, Phone or City..."
-            value={search}
-            onChange={handleSearchChange}
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-          />
+  return (
+    <div className="p-3 sm:p-5 md:p-6 2xl:p-8 max-w-7xl 2xl:max-w-[1700px] 3xl:max-w-[2200px] mx-auto space-y-5 w-full">
+
+      {/* SCREENSHOT (16) EXACT HMS-STYLE PATIENT WINDOW */}
+      <div className="bg-white border-2 border-slate-300 rounded-xl shadow-lg overflow-hidden text-xs">
+        {/* Window Title Bar */}
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-4 py-2.5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-amber-400" />
+            <span className="font-bold text-sm tracking-wide uppercase">Patient</span>
+            <span className="text-[11px] text-slate-400 border-l border-slate-600 pl-2">
+              Patient Master Directory & Search
+            </span>
+          </div>
+          <button
+            onClick={() => navigate('/reception/register')}
+            className="bg-violet-600 hover:bg-violet-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            + Register New Patient
+          </button>
         </div>
-      </div>
+
+        <div className="p-4 space-y-3 bg-slate-50/50">
+          {/* ROW 1: Type, OP No., Date */}
+          <div className="bg-white p-3 rounded-lg border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="sm:col-span-3 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-12 text-right">Type</label>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-semibold"
+                >
+                  <option value="Alopathy">Alopathy</option>
+                  <option value="(None)">(None)</option>
+                  <option value="Ayurvedham">Ayurvedham</option>
+                  <option value="Homeo">Homeo</option>
+                </select>
+              </div>
+              <div className="sm:col-span-3 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-16 text-right">OP No.</label>
+                <input
+                  type="text"
+                  placeholder="OP No."
+                  value={filterOpNo}
+                  onChange={(e) => { setFilterOpNo(e.target.value); setSearch(e.target.value); fetchPatients(e.target.value); }}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-mono font-bold"
+                />
+              </div>
+              <div className="sm:col-span-3 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-12 text-right">Date</label>
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-semibold"
+                />
+              </div>
+              <div className="sm:col-span-3 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-12 text-right">Name</label>
+                <input
+                  type="text"
+                  placeholder="Search patient name..."
+                  value={search}
+                  onChange={handleSearchChange}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-bold text-slate-900"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 2: Place, Phone, Address */}
+          <div className="bg-white p-3 rounded-lg border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="sm:col-span-3 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-12 text-right">Place</label>
+                <input
+                  type="text"
+                  value={filterPlace}
+                  onChange={(e) => setFilterPlace(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1"
+                />
+              </div>
+              <div className="sm:col-span-3 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-14 text-right">Phone</label>
+                <input
+                  type="text"
+                  value={filterPhone}
+                  onChange={(e) => { setFilterPhone(e.target.value); setSearch(e.target.value); fetchPatients(e.target.value); }}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-mono"
+                />
+              </div>
+              <div className="sm:col-span-6 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-16 text-right">Address</label>
+                <input
+                  type="text"
+                  value={filterAddress}
+                  onChange={(e) => setFilterAddress(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 3: Sex, Age(YMD), Relation, Doctor */}
+          <div className="bg-white p-3 rounded-lg border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="sm:col-span-2 flex items-center gap-1.5">
+                <label className="font-bold text-slate-700 w-10 text-right">Sex</label>
+                <select
+                  value={filterSex}
+                  onChange={(e) => setFilterSex(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-1.5 py-1"
+                >
+                  <option value="">(All)</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="sm:col-span-3 flex items-center gap-1">
+                <label className="font-bold text-slate-700 text-right whitespace-nowrap">Age(YMD)</label>
+                <input type="text" placeholder="Y" value={filterAgeY} onChange={(e) => setFilterAgeY(e.target.value)} className="w-9 bg-white border border-slate-300 rounded p-1 text-center font-bold" />
+                <input type="text" placeholder="M" value={filterAgeM} onChange={(e) => setFilterAgeM(e.target.value)} className="w-8 bg-white border border-slate-300 rounded p-1 text-center" />
+                <input type="text" placeholder="D" value={filterAgeD} onChange={(e) => setFilterAgeD(e.target.value)} className="w-8 bg-white border border-slate-300 rounded p-1 text-center" />
+              </div>
+              <div className="sm:col-span-3 flex items-center gap-1.5">
+                <select value={filterRelation} onChange={(e) => setFilterRelation(e.target.value)} className="w-14 bg-white border border-slate-300 rounded px-1 py-1 font-bold">
+                  <option value="S/O">S/O</option>
+                  <option value="D/O">D/O</option>
+                  <option value="W/O">W/O</option>
+                  <option value="H/O">H/O</option>
+                  <option value="C/O">C/O</option>
+                </select>
+                <input type="text" placeholder="Relative name" value={filterRelativeName} onChange={(e) => setFilterRelativeName(e.target.value)} className="flex-1 bg-white border border-slate-300 rounded px-2 py-1" />
+              </div>
+              <div className="sm:col-span-4 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-16 text-right">Doctor</label>
+                <select
+                  value={filterDoctor}
+                  onChange={(e) => setFilterDoctor(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-semibold text-slate-900"
+                >
+                  <option value="(All)">(All)</option>
+                  <option value="ARUN PRAKASH">ARUN PRAKASH</option>
+                  <option value="SWATHIGHA SUDHEER .K">SWATHIGHA SUDHEER .K</option>
+                  <option value="Dr. Ananya Nair">Dr. Ananya Nair</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 4: From-To date range, List button */}
+          <div className="bg-white p-3 rounded-lg border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="sm:col-span-4 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-12 text-right">From</label>
+                <input
+                  type="date"
+                  value={filterFromDate}
+                  onChange={(e) => setFilterFromDate(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-semibold"
+                />
+              </div>
+              <div className="sm:col-span-4 flex items-center gap-2">
+                <label className="font-bold text-slate-700 w-6 text-right">To</label>
+                <input
+                  type="date"
+                  value={filterToDate}
+                  onChange={(e) => setFilterToDate(e.target.value)}
+                  className="flex-1 bg-white border border-slate-300 rounded px-2 py-1 font-semibold"
+                />
+              </div>
+              <div className="sm:col-span-4 flex items-center gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => fetchPatients(search)}
+                  className="px-6 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded font-bold shadow-xs"
+                >
+                  List
+                </button>
+              </div>
+            </div>
+          </div>
 
       {/* Patients Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
@@ -250,6 +420,59 @@ export default function PatientDirectoryPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+          {/* SCREENSHOT 16 BOTTOM TOOLBAR */}
+          <div className="bg-slate-200 p-2.5 rounded-lg border border-slate-300 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { if (patients.length > 0) openHistoryModal(patients[0]); }}
+                className="px-4 py-1.5 bg-white border border-slate-400 hover:bg-slate-50 rounded text-slate-800 font-bold shadow-xs flex items-center gap-1.5"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                History
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => alert('Patient record saved.')}
+                className="px-5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow-xs"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/reception/register')}
+                className="px-4 py-1.5 bg-white border border-slate-400 hover:bg-slate-50 rounded text-slate-800 font-bold shadow-xs"
+              >
+                New
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="px-4 py-1.5 bg-white border border-slate-400 hover:bg-slate-50 rounded text-slate-800 font-bold shadow-xs"
+              >
+                Exit
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/appointments')}
+                className="px-4 py-1.5 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded text-amber-900 font-bold shadow-xs"
+              >
+                Booking
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/billing/pos')}
+                className="px-4 py-1.5 bg-sky-100 hover:bg-sky-200 border border-sky-300 rounded text-sky-900 font-bold shadow-xs"
+              >
+                Billing
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -19,7 +19,12 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Flame,
-  Send
+  Send,
+  Eye,
+  EyeOff,
+  UserCheck,
+  FileSpreadsheet,
+  AlertCircle
 } from 'lucide-react';
 import { appointmentsApi, subscribeToDbChanges, getDb } from '@/api';
 import { useAuthStore } from '@/store/authStore';
@@ -51,7 +56,7 @@ export default function PatientPipelineTracker({
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
-  const userRole = (user?.role || 'Receptionist').trim();
+  const userRole = (user?.role || 'Super Admin').trim();
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -76,6 +81,13 @@ export default function PatientPipelineTracker({
 
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>(() => new Date().toLocaleTimeString());
+  const [liveAppointments, setLiveAppointments] = useState<any[]>([]);
+  const [livePatients, setLivePatients] = useState<any[]>([]);
+  const [livePrescriptions, setLivePrescriptions] = useState<any[]>([]);
+  const [liveConsultations, setLiveConsultations] = useState<any[]>([]);
+  const [selectedFilterStage, setSelectedFilterStage] = useState<string>('all');
+  const [showPatientTray, setShowPatientTray] = useState<boolean>(true);
+  const [isBackendSynced, setIsBackendSynced] = useState<boolean>(false);
 
   const calculateStats = useCallback((appointments: any[]) => {
     let reception = 0;
@@ -129,19 +141,46 @@ export default function PatientPipelineTracker({
   const refreshData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await appointmentsApi.queue();
-      const list = Array.isArray(res) ? res : (res?.data || []);
-      calculateStats(list);
-    } catch (err) {
-      // Fallback to local storage DB
+      let appts: any[] = [];
+      let pats: any[] = [];
+      let rxs: any[] = [];
+      let consults: any[] = [];
+
+      // 1. Fetch live multi-frontend synchronized pipeline from backend (FastAPI Port 8000)
       try {
+        const syncRes = await fetch('http://localhost:8000/api/pipeline/sync', { cache: 'no-store' });
+        if (syncRes.ok) {
+          const syncData = await syncRes.json();
+          if (syncData.appointments && Array.isArray(syncData.appointments) && syncData.appointments.length > 0) {
+            appts = syncData.appointments;
+            pats = syncData.patients || [];
+            rxs = syncData.prescriptions || [];
+            consults = syncData.consultations || [];
+            setIsBackendSynced(true);
+          }
+        }
+      } catch (err) {
+        setIsBackendSynced(false);
+      }
+
+      // 2. Fallback to local mock database if backend sync was empty or offline
+      if (!appts || appts.length === 0) {
         const db = getDb();
         if (db && db.appointments) {
-          calculateStats(db.appointments);
+          appts = db.appointments;
+          pats = db.patients || [];
+          rxs = db.prescriptions || [];
+          consults = db.consultations || [];
         }
-      } catch (e) {
-        console.error('Failed to load appointments for pipeline tracker', e);
       }
+
+      setLiveAppointments(appts);
+      setLivePatients(pats);
+      setLivePrescriptions(rxs);
+      setLiveConsultations(consults);
+      calculateStats(appts);
+    } catch (err) {
+      console.error('Failed to load appointments for pipeline tracker', err);
     } finally {
       setLoading(false);
     }
@@ -152,7 +191,8 @@ export default function PatientPipelineTracker({
     const unsubscribe = subscribeToDbChanges(() => {
       refreshData();
     });
-    const interval = setInterval(refreshData, 10000);
+    // Live polling every 2.5 seconds to instantly reflect actions on port 3000
+    const interval = setInterval(refreshData, 2500);
     return () => {
       unsubscribe();
       clearInterval(interval);
@@ -169,32 +209,73 @@ export default function PatientPipelineTracker({
     });
   };
 
-  const handleStageClick = (stageKey: string, targetRoute?: string) => {
+  const handleStageClick = (stageKey: string) => {
     if (onSelectStage) {
       onSelectStage(stageKey);
-      return;
     }
-
-    if (location.pathname === '/reception/queue') {
-      // Dispatch custom event or URL param so PatientQueuePage can filter
-      const event = new CustomEvent('heal:filter-pipeline-stage', { detail: { stage: stageKey } });
-      window.dispatchEvent(event);
-      return;
-    }
-
-    if (targetRoute) {
-      navigate(targetRoute);
-    } else {
-      navigate(`/reception/queue?stage=${stageKey}`);
-    }
+    // Filter the live patient detail tray
+    setSelectedFilterStage(stageKey);
+    setShowPatientTray(true);
   };
 
-  // Determine stage priority based on active role
-  const isDoctor = userRole === 'Doctor';
-  const isNurse = userRole === 'Nurse' || userRole === 'Therapist';
-  const isReception = userRole === 'Receptionist' || userRole === 'Reception';
-  const isCashier = userRole === 'Cashier';
-  const isPharmacist = userRole === 'Pharmacist';
+  // Filter patients according to the selected pipeline stage
+  const filteredAppointments = liveAppointments.filter((a) => {
+    if (selectedFilterStage === 'all') return (a.status || '').trim() !== 'Completed';
+    const s = (a.status || '').trim();
+    if (selectedFilterStage === 'Waiting') return s === 'Waiting';
+    if (selectedFilterStage === 'With-Nurse') return s === 'With-Nurse' || s === 'Nurse-Station';
+    if (selectedFilterStage === 'Passed-to-Doctor') return s === 'Passed-to-Doctor' || s === 'Called' || s === 'In-Consult';
+    if (selectedFilterStage === 'Sent-to-Pharmacy') return s === 'Sent-to-Pharmacy';
+    if (selectedFilterStage === 'Sent-to-Nursing') return s === 'Sent-to-Nursing' || s === 'Procedure';
+    if (selectedFilterStage === 'Sent-to-Lab') return s === 'Sent-to-Lab';
+    if (selectedFilterStage === 'Billing-Pending') return s === 'Billing-Pending' || s === 'Sent-Back-to-Reception';
+    if (selectedFilterStage === 'Completed') return s === 'Completed';
+    return true;
+  });
+
+  // Helper to lookup patient profile
+  const getPatientInfo = (appt: any) => {
+    const pat = livePatients.find((p) => p.id === appt.patient_id) || {};
+    return {
+      name: appt.patient_name || (pat.first_name ? `${pat.first_name} ${pat.last_name || ''}`.trim() : 'Patient'),
+      phone: appt.phone || pat.phone || '—',
+      gender: appt.gender || pat.gender || '—',
+      age: appt.age || pat.age || (pat.dob ? '—' : '—'),
+      op_no: appt.op_no || pat.op_no || `OP-${appt.token_no || '101'}`,
+    };
+  };
+
+  // Helper to lookup prescriptions for this appointment
+  const getPrescriptionInfo = (appt: any) => {
+    // 1. Direct rxList embedded in appointment
+    if (appt.rxList && Array.isArray(appt.rxList) && appt.rxList.length > 0) {
+      return {
+        items: appt.rxList,
+        nextStep: appt.nextStep || appt.next_step,
+        notes: appt.nextStepNotes,
+      };
+    }
+    // 2. Search in livePrescriptions
+    const rx = livePrescriptions.find((r) => r.appointment_id === appt.id || r.patient_id === appt.patient_id);
+    if (rx && rx.items && Array.isArray(rx.items) && rx.items.length > 0) {
+      return {
+        items: rx.items,
+        nextStep: rx.next_step || appt.nextStep,
+        notes: rx.instructions,
+      };
+    }
+    // 3. Search in liveConsultations
+    const consult = liveConsultations.find((c) => c.appointment_id === appt.id);
+    if (consult && consult.diagnosis) {
+      return {
+        items: [],
+        diagnosis: consult.diagnosis,
+        nextStep: consult.next_step,
+        notes: consult.doctor_notes,
+      };
+    }
+    return null;
+  };
 
   return (
     <div
@@ -215,6 +296,12 @@ export default function PatientPipelineTracker({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#28A745] animate-ping" />
                 Live Active Flow
               </span>
+              {isBackendSynced && (
+                <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                  Synced with Core (Port 3000)
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-[#7A6B61] truncate hidden md:block">
               Full lifecycle tracking: Reception Arrival → Nurse Vitals → Doctor Workbench → Post-Doctor Routing (Rx / Procedures / Lab) → Sent Back to Reception
@@ -224,11 +311,6 @@ export default function PatientPipelineTracker({
 
         {/* Right side controls: Role Context, Total Counters & Collapse Toggle */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Active Role Badge */}
-          <span className="hidden xl:inline-flex items-center gap-1 text-[11px] font-medium text-[#7A6B61] bg-[#EDE6DD]/50 px-2.5 py-1 rounded-lg">
-            Role: <strong className="text-[#1E1B18]">{userRole}</strong>
-          </span>
-
           {/* Quick Active Patients Count */}
           <div className="flex items-center gap-1.5 bg-[#FAF2EB] border border-[#F3D5BD] text-[#965F36] px-2.5 py-1 rounded-xl text-xs font-bold shadow-2xs">
             <Flame size={13} className="text-[#D96B27]" />
@@ -241,7 +323,7 @@ export default function PatientPipelineTracker({
           <button
             type="button"
             onClick={refreshData}
-            title={`Last updated at ${lastUpdated}. Click to refresh.`}
+            title={`Last updated at ${lastUpdated}. Click to force sync.`}
             className="p-1.5 text-[#7A6B61] hover:text-[#1E1B18] hover:bg-[#EDE6DD] rounded-lg transition"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin text-[#965F36]' : ''} />
@@ -275,9 +357,11 @@ export default function PatientPipelineTracker({
             
             {/* STAGE 1: Reception Arrival */}
             <div
-              onClick={() => handleStageClick('Waiting', '/reception/queue')}
+              onClick={() => handleStageClick('Waiting')}
               className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                isReception ? 'ring-2 ring-amber-400 bg-amber-50/70 border-amber-300' : 'bg-white hover:bg-[#FFFDF9] border-[#E8DEC8] hover:border-amber-400 hover:shadow-sm'
+                selectedFilterStage === 'Waiting'
+                  ? 'ring-2 ring-amber-500 bg-amber-50/90 border-amber-400 shadow-sm'
+                  : 'bg-white hover:bg-[#FFFDF9] border-[#E8DEC8] hover:border-amber-400 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
@@ -294,19 +378,21 @@ export default function PatientPipelineTracker({
                   <span className="text-[11px] text-[#7A6B61] font-medium">waiting</span>
                 </div>
                 <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Arrival & Triage</p>
-                <p className="text-[10px] text-[#8E7E73] line-clamp-1">New registrations to pass</p>
+                <p className="text-[10px] text-[#8E7E73] line-clamp-1">New registrations</p>
               </div>
               <div className="mt-2 pt-2 border-t border-[#F0E6D8] flex items-center justify-between text-[10px] text-amber-700 font-bold">
-                <span>Pass to Nurse ➔</span>
+                <span>View Patients ➔</span>
                 <ChevronRight size={12} className="opacity-60 group-hover:translate-x-0.5 transition" />
               </div>
             </div>
 
             {/* STAGE 2: Nurse Station / Vitals */}
             <div
-              onClick={() => handleStageClick('With-Nurse', '/daycare/lounges')}
+              onClick={() => handleStageClick('With-Nurse')}
               className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                isNurse ? 'ring-2 ring-teal-500 bg-teal-50/70 border-teal-300' : 'bg-white hover:bg-[#F9FCFB] border-[#E8DEC8] hover:border-teal-400 hover:shadow-sm'
+                selectedFilterStage === 'With-Nurse'
+                  ? 'ring-2 ring-teal-500 bg-teal-50/90 border-teal-400 shadow-sm'
+                  : 'bg-white hover:bg-[#F9FCFB] border-[#E8DEC8] hover:border-teal-400 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
@@ -323,19 +409,21 @@ export default function PatientPipelineTracker({
                   <span className="text-[11px] text-[#7A6B61] font-medium">at station</span>
                 </div>
                 <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Vitals & BMI Triage</p>
-                <p className="text-[10px] text-[#8E7E73] line-clamp-1">Height, Weight, BP & TT</p>
+                <p className="text-[10px] text-[#8E7E73] line-clamp-1">Height, Weight, BP</p>
               </div>
               <div className="mt-2 pt-2 border-t border-[#F0E6D8] flex items-center justify-between text-[10px] text-teal-700 font-bold">
-                <span>Pass to Doctor ➔</span>
+                <span>View Patients ➔</span>
                 <ChevronRight size={12} className="opacity-60 group-hover:translate-x-0.5 transition" />
               </div>
             </div>
 
             {/* STAGE 3: Passed to Doctor / With Doctor */}
             <div
-              onClick={() => handleStageClick('Passed-to-Doctor', '/clinical/workbench')}
+              onClick={() => handleStageClick('Passed-to-Doctor')}
               className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                isDoctor ? 'ring-2 ring-indigo-500 bg-indigo-50/80 border-indigo-300' : 'bg-white hover:bg-[#F9F9FD] border-[#E8DEC8] hover:border-indigo-400 hover:shadow-sm'
+                selectedFilterStage === 'Passed-to-Doctor'
+                  ? 'ring-2 ring-indigo-500 bg-indigo-50/90 border-indigo-400 shadow-sm'
+                  : 'bg-white hover:bg-[#F9F9FD] border-[#E8DEC8] hover:border-indigo-400 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
@@ -352,19 +440,21 @@ export default function PatientPipelineTracker({
                   <span className="text-[11px] text-[#7A6B61] font-medium">with doctor</span>
                 </div>
                 <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Consultation Hub</p>
-                <p className="text-[10px] text-[#8E7E73] line-clamp-1">Decides Rx / Nurse / Lab</p>
+                <p className="text-[10px] text-[#8E7E73] line-clamp-1">Rx & Next Steps</p>
               </div>
               <div className="mt-2 pt-2 border-t border-[#F0E6D8] flex items-center justify-between text-[10px] text-indigo-700 font-bold">
-                <span>Route Patient ➔</span>
+                <span>View Rx ➔</span>
                 <ChevronRight size={12} className="opacity-60 group-hover:translate-x-0.5 transition" />
               </div>
             </div>
 
             {/* STAGE 4A: Post-Doctor -> Sent to Pharmacy */}
             <div
-              onClick={() => handleStageClick('Sent-to-Pharmacy', '/pharmacy/dispensary')}
+              onClick={() => handleStageClick('Sent-to-Pharmacy')}
               className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                isPharmacist ? 'ring-2 ring-emerald-500 bg-emerald-50/80 border-emerald-300' : 'bg-white hover:bg-[#F9FCFA] border-[#E8DEC8] hover:border-emerald-400 hover:shadow-sm'
+                selectedFilterStage === 'Sent-to-Pharmacy'
+                  ? 'ring-2 ring-emerald-500 bg-emerald-50/90 border-emerald-400 shadow-sm'
+                  : 'bg-white hover:bg-[#F9FCFA] border-[#E8DEC8] hover:border-emerald-400 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
@@ -381,18 +471,22 @@ export default function PatientPipelineTracker({
                   <span className="text-[11px] text-[#7A6B61] font-medium">Rx pending</span>
                 </div>
                 <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Rx Dispensing</p>
-                <p className="text-[10px] text-[#8E7E73] line-clamp-1">FEFO batches & billing</p>
+                <p className="text-[10px] text-[#8E7E73] line-clamp-1">FEFO batches</p>
               </div>
               <div className="mt-2 pt-2 border-t border-[#F0E6D8] flex items-center justify-between text-[10px] text-emerald-700 font-bold">
-                <span>To Reception ➔</span>
+                <span>View Orders ➔</span>
                 <ChevronRight size={12} className="opacity-60 group-hover:translate-x-0.5 transition" />
               </div>
             </div>
 
             {/* STAGE 4B: Post-Doctor -> Sent to Nursing Procedures */}
             <div
-              onClick={() => handleStageClick('Sent-to-Nursing', '/daycare/lounges')}
-              className="group relative flex flex-col justify-between p-3 rounded-xl border bg-white hover:bg-[#FDF9FC] border-[#E8DEC8] hover:border-fuchsia-400 hover:shadow-sm transition-all cursor-pointer select-none"
+              onClick={() => handleStageClick('Sent-to-Nursing')}
+              className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                selectedFilterStage === 'Sent-to-Nursing'
+                  ? 'ring-2 ring-fuchsia-500 bg-fuchsia-50/90 border-fuchsia-400 shadow-sm'
+                  : 'bg-white hover:bg-[#FDF9FC] border-[#E8DEC8] hover:border-fuchsia-400 hover:shadow-sm'
+              }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-fuchsia-700 bg-fuchsia-100/80 px-1.5 py-0.5 rounded">
@@ -411,15 +505,19 @@ export default function PatientPipelineTracker({
                 <p className="text-[10px] text-[#8E7E73] line-clamp-1">Clean & Dressing / TT</p>
               </div>
               <div className="mt-2 pt-2 border-t border-[#F0E6D8] flex items-center justify-between text-[10px] text-fuchsia-700 font-bold">
-                <span>To Reception ➔</span>
+                <span>View Orders ➔</span>
                 <ChevronRight size={12} className="opacity-60 group-hover:translate-x-0.5 transition" />
               </div>
             </div>
 
             {/* STAGE 4C: Post-Doctor -> Sent to Lab */}
             <div
-              onClick={() => handleStageClick('Sent-to-Lab', '/clinical/lab')}
-              className="group relative flex flex-col justify-between p-3 rounded-xl border bg-white hover:bg-[#F9FCFD] border-[#E8DEC8] hover:border-cyan-400 hover:shadow-sm transition-all cursor-pointer select-none"
+              onClick={() => handleStageClick('Sent-to-Lab')}
+              className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                selectedFilterStage === 'Sent-to-Lab'
+                  ? 'ring-2 ring-cyan-500 bg-cyan-50/90 border-cyan-400 shadow-sm'
+                  : 'bg-white hover:bg-[#F9FCFD] border-[#E8DEC8] hover:border-cyan-400 hover:shadow-sm'
+              }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-cyan-700 bg-cyan-100/80 px-1.5 py-0.5 rounded">
@@ -432,22 +530,24 @@ export default function PatientPipelineTracker({
                   <span className="text-2xl sm:text-3xl font-black text-[#1E1B18] font-mono leading-none">
                     {stats.sentToLab}
                   </span>
-                  <span className="text-[11px] text-[#7A6B61] font-medium">tests ordered</span>
+                  <span className="text-[11px] text-[#7A6B61] font-medium">tests</span>
                 </div>
-                <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Lab Diagnostics</p>
-                <p className="text-[10px] text-[#8E7E73] line-clamp-1">Blood, Urine & Vitals</p>
+                <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Diagnostics</p>
+                <p className="text-[10px] text-[#8E7E73] line-clamp-1">Pathology & Tests</p>
               </div>
               <div className="mt-2 pt-2 border-t border-[#F0E6D8] flex items-center justify-between text-[10px] text-cyan-700 font-bold">
-                <span>To Reception ➔</span>
+                <span>View Tests ➔</span>
                 <ChevronRight size={12} className="opacity-60 group-hover:translate-x-0.5 transition" />
               </div>
             </div>
 
             {/* STAGE 5: Sent Back to Receptionist (Billing & 3-Day Review) */}
             <div
-              onClick={() => handleStageClick('Billing-Pending', '/billing/pos')}
+              onClick={() => handleStageClick('Billing-Pending')}
               className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
-                isReception || isCashier ? 'ring-2 ring-orange-500 bg-orange-50/80 border-orange-300' : 'bg-white hover:bg-[#FDF9F7] border-[#E8DEC8] hover:border-orange-400 hover:shadow-sm'
+                selectedFilterStage === 'Billing-Pending'
+                  ? 'ring-2 ring-orange-500 bg-orange-50/90 border-orange-400 shadow-sm'
+                  : 'bg-white hover:bg-[#FDF9F7] border-[#E8DEC8] hover:border-orange-400 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
@@ -463,19 +563,23 @@ export default function PatientPipelineTracker({
                   </span>
                   <span className="text-[11px] text-[#7A6B61] font-medium">to settle</span>
                 </div>
-                <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Billing & Follow-Up</p>
-                <p className="text-[10px] text-[#8E7E73] line-clamp-1">POS & 3-day review date</p>
+                <p className="text-xs font-bold text-[#3B312A] mt-1 line-clamp-1">Billing & POS</p>
+                <p className="text-[10px] text-[#8E7E73] line-clamp-1">3-day review date</p>
               </div>
               <div className="mt-2 pt-2 border-t border-[#F0E6D8] flex items-center justify-between text-[10px] text-orange-700 font-bold">
-                <span>Discharge ➔</span>
+                <span>View Bills ➔</span>
                 <ChevronRight size={12} className="opacity-60 group-hover:translate-x-0.5 transition" />
               </div>
             </div>
 
             {/* STAGE 6: Discharged & Completed */}
             <div
-              onClick={() => handleStageClick('Completed', '/reception/queue')}
-              className="group relative flex flex-col justify-between p-3 rounded-xl border bg-white hover:bg-[#F8FCF9] border-[#E8DEC8] hover:border-emerald-500 hover:shadow-sm transition-all cursor-pointer select-none"
+              onClick={() => handleStageClick('Completed')}
+              className={`group relative flex flex-col justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                selectedFilterStage === 'Completed'
+                  ? 'ring-2 ring-emerald-500 bg-emerald-50/90 border-emerald-400 shadow-sm'
+                  : 'bg-white hover:bg-[#F8FCF9] border-[#E8DEC8] hover:border-emerald-500 hover:shadow-sm'
+              }`}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded">
@@ -501,26 +605,253 @@ export default function PatientPipelineTracker({
 
           </div>
 
-          {/* Role Attention Callout banner inside tracker */}
-          <div className="mt-3 pt-2.5 border-t border-[#EDE6DD] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 text-[#5C5047]">
-              <span className="font-bold text-[#1E1B18]">Pipeline Direction:</span>
-              <span className="hidden lg:inline text-[#7A6B61]">
-                Patient Arrival (Reception) ➔ Nurse Station (Vitals/TT) ➔ Doctor (EMR Hub) ➔ Pharmacy / Nursing Daycare / Lab ➔ Back to Reception (Bill & 3-Day Review)
-              </span>
-              <span className="lg:hidden text-[#7A6B61]">
-                Arrival ➔ Nurse ➔ Doctor ➔ Rx/Nursing/Lab ➔ Back to Reception
-              </span>
+          {/* 3. Live Interactive Patient Details & Prescriptions Tray */}
+          <div className="mt-4 pt-3 border-t border-[#EDE6DD]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <h3 className="text-xs font-bold text-[#1E1B18] uppercase tracking-wider flex items-center gap-1.5">
+                  <span>Live Active Patient Tray</span>
+                  <span className="text-[11px] font-normal text-slate-500">
+                    ({filteredAppointments.length} patient{filteredAppointments.length === 1 ? '' : 's'} in selected view)
+                  </span>
+                </h3>
+              </div>
+
+              {/* Stage Filter Buttons */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilterStage('all')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
+                    selectedFilterStage === 'all'
+                      ? 'bg-[#965F36] text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  All Active ({stats.totalActive})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilterStage('Waiting')}
+                  className={`px-2 py-1 rounded-lg font-semibold text-[11px] transition-all ${
+                    selectedFilterStage === 'Waiting'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  Reception ({stats.reception})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilterStage('With-Nurse')}
+                  className={`px-2 py-1 rounded-lg font-semibold text-[11px] transition-all ${
+                    selectedFilterStage === 'With-Nurse'
+                      ? 'bg-teal-600 text-white shadow-xs'
+                      : 'bg-teal-50 hover:bg-teal-100 text-teal-800'
+                  }`}
+                >
+                  Nurse ({stats.nurseVitals})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilterStage('Passed-to-Doctor')}
+                  className={`px-2 py-1 rounded-lg font-semibold text-[11px] transition-all ${
+                    selectedFilterStage === 'Passed-to-Doctor'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800'
+                  }`}
+                >
+                  Doctor Cabin & Rx ({stats.passedToDoctor})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilterStage('Sent-to-Pharmacy')}
+                  className={`px-2 py-1 rounded-lg font-semibold text-[11px] transition-all ${
+                    selectedFilterStage === 'Sent-to-Pharmacy'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  Pharmacy ({stats.sentToPharmacy})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFilterStage('Billing-Pending')}
+                  className={`px-2 py-1 rounded-lg font-semibold text-[11px] transition-all ${
+                    selectedFilterStage === 'Billing-Pending'
+                      ? 'bg-orange-600 text-white shadow-xs'
+                      : 'bg-orange-50 hover:bg-orange-100 text-orange-800'
+                  }`}
+                >
+                  Billing ({stats.sentBackToReception})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPatientTray(!showPatientTray)}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 ml-1"
+                  title={showPatientTray ? 'Collapse patient tray' : 'Expand patient tray'}
+                >
+                  {showPatientTray ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              </div>
             </div>
 
-            {/* Quick 1-click Filter to Reset view */}
+            {/* Patient Cards / Rows List */}
+            {showPatientTray && (
+              <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                {filteredAppointments.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    No patients currently in this stage. When new patients register at Reception or are consulted by the Doctor on Port 3000, they will appear here live.
+                  </div>
+                ) : (
+                  filteredAppointments.map((appt) => {
+                    const pInfo = getPatientInfo(appt);
+                    const rxInfo = getPrescriptionInfo(appt);
+                    const v = appt.vitals || {};
+                    const status = (appt.status || '').trim();
+
+                    return (
+                      <div
+                        key={appt.id || appt.token_no}
+                        className="p-3 rounded-xl border border-[#EDE6DD] bg-white hover:border-[#D6C4B0] hover:shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-3"
+                      >
+                        {/* Patient Basic Identity */}
+                        <div className="flex items-start gap-3 min-w-[220px]">
+                          <div className="w-9 h-9 rounded-xl bg-[#FAF2EB] border border-[#F3D5BD] text-[#965F36] flex flex-col items-center justify-center font-mono font-bold text-xs shrink-0">
+                            <span className="text-[9px] uppercase tracking-tighter text-[#A47148]">TKN</span>
+                            <span>#{appt.token_no || '1'}</span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-[#1E1B18]">{pInfo.name}</h4>
+                              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                {pInfo.op_no}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                              <span>{pInfo.phone}</span>
+                              {pInfo.gender !== '—' && (
+                                <>
+                                  <span>•</span>
+                                  <span>{pInfo.gender}</span>
+                                </>
+                              )}
+                              {pInfo.age !== '—' && (
+                                <>
+                                  <span>•</span>
+                                  <span>{pInfo.age} yrs</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Middle: Stage & Assigned Doctor / Nurse Vitals */}
+                        <div className="flex-1 flex flex-wrap items-center gap-2 text-xs">
+                          {/* Current Status Pill */}
+                          <span
+                            className={`px-2 py-0.5 rounded-full font-bold text-[10px] border ${
+                              status === 'Waiting'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : status === 'With-Nurse' || status === 'Nurse-Station'
+                                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                                : status === 'Passed-to-Doctor' || status === 'Called' || status === 'In-Consult'
+                                ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                : status === 'Sent-to-Pharmacy'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : status === 'Billing-Pending'
+                                ? 'bg-orange-50 text-orange-800 border-orange-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {status === 'Waiting' && 'Waiting at Reception'}
+                            {(status === 'With-Nurse' || status === 'Nurse-Station') && 'Intake with Nurse'}
+                            {(status === 'Passed-to-Doctor' || status === 'Called' || status === 'In-Consult') && 'With Doctor Cabin'}
+                            {status === 'Sent-to-Pharmacy' && 'Rx Dispensing'}
+                            {status === 'Billing-Pending' && 'Billing & Follow-Up'}
+                            {status === 'Completed' && 'Discharged'}
+                            {!['Waiting', 'With-Nurse', 'Nurse-Station', 'Passed-to-Doctor', 'Called', 'In-Consult', 'Sent-to-Pharmacy', 'Billing-Pending', 'Completed'].includes(status) && status}
+                          </span>
+
+                          {/* Doctor Assignment */}
+                          <span className="text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/80">
+                            Dr: <strong className="text-slate-800">{appt.doctor_name || 'Dr. Sarah Jenkins'}</strong>
+                          </span>
+
+                          {/* Vitals Summary if recorded by nurse */}
+                          {v.bp_systolic ? (
+                            <span className="text-[10px] font-mono bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
+                              BP: {v.bp_systolic}/{v.bp_diastolic} | Pulse: {v.pulse_rate || 72} | BMI: {v.bmi || '22.4'}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">No vitals yet</span>
+                          )}
+                        </div>
+
+                        {/* Right: Prescriptions & Attached Medicines (Rx) */}
+                        <div className="min-w-[280px] max-w-[380px] bg-slate-50/80 p-2 rounded-lg border border-slate-200/70 text-xs">
+                          {rxInfo && rxInfo.items && rxInfo.items.length > 0 ? (
+                            <div>
+                              <div className="flex items-center justify-between text-[10px] font-bold text-indigo-700 uppercase mb-1">
+                                <span className="flex items-center gap-1">
+                                  <Pill size={11} />
+                                  <span>Doctor Rx ({rxInfo.items.length} meds)</span>
+                                </span>
+                                {rxInfo.nextStep && (
+                                  <span className="bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded font-mono text-[9px]">
+                                    Next: {rxInfo.nextStep}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                {rxInfo.items.map((med: any, mIdx: number) => (
+                                  <div key={mIdx} className="text-[11px] text-slate-700 flex items-center justify-between gap-2">
+                                    <span className="font-semibold truncate">
+                                      {med.medicine_name || med.name}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-500 shrink-0">
+                                      {med.frequency || '1x daily'} × {med.duration_days || med.days || '5'}d = <strong className="text-emerald-700">{med.quantity || (med.total_count) || '10'}</strong>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : status === 'Passed-to-Doctor' || status === 'Called' || status === 'In-Consult' ? (
+                            <div className="text-[11px] text-amber-700 flex items-center gap-1.5 py-0.5">
+                              <Stethoscope size={12} className="shrink-0" />
+                              <span>Doctor is currently evaluating consultation & medicines...</span>
+                            </div>
+                          ) : status === 'Waiting' ? (
+                            <div className="text-[11px] text-slate-400 italic py-0.5">
+                              Waiting at reception to pass to Nurse Station
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-slate-400 italic py-0.5">
+                              No prescription assigned
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quick info note */}
+          <div className="mt-3 pt-2 border-t border-[#EDE6DD] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-[#7A6B61]">
+            <div>
+              <span className="font-bold text-[#1E1B18]">Live Pipeline Sync:</span> Changes made in Core Clinic (Port 3000 Reception/Nurse/Doctor) synchronize in real-time.
+            </div>
             {activeStage && activeStage !== 'all' && (
               <button
                 type="button"
-                onClick={() => handleStageClick('all')}
+                onClick={() => setSelectedFilterStage('all')}
                 className="text-xs font-bold text-[#965F36] hover:underline flex items-center gap-1 shrink-0"
               >
-                <span>Clear Stage Filter ({activeStage})</span>
+                <span>Reset View (Show All Active)</span>
                 <RefreshCw size={11} />
               </button>
             )}

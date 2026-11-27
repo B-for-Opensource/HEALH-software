@@ -9,6 +9,8 @@ env/
 ENV/
 *.db
 *.sqlite3
+pipeline_cache.json
+Backend-python/pipeline_cache.json
 
 # Node / Frontend
 node_modules/

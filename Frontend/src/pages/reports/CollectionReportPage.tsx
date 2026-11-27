@@ -18,6 +18,16 @@ export default function CollectionReportPage() {
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState<any[]>([]);
 
+  // HMS-style filter states
+  const [reportType, setReportType] = useState('Summary');
+  const [reportDate, setReportDate] = useState('Today');
+  const [reportReceptionist, setReportReceptionist] = useState('(All)');
+  const [reportDoctor, setReportDoctor] = useState('(All)');
+  const [timeFrom, setTimeFrom] = useState('00:00');
+  const [timeTo, setTimeTo] = useState('23:59');
+  const [noFrom, setNoFrom] = useState('');
+  const [noTo, setNoTo] = useState('');
+
   const fetchReport = async () => {
     setLoading(true);
     try {
@@ -66,50 +76,100 @@ export default function CollectionReportPage() {
         </button>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">From Date</label>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs bg-white focus:ring-1 focus:ring-violet-500 focus:outline-none"
-          />
+      {/* HMS-style Filter Panel */}
+      <div className="bg-white border border-slate-300 rounded-lg shadow-xs">
+        <div className="bg-slate-100 border-b border-slate-300 px-4 py-2 rounded-t-lg">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Report Filter</span>
         </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">To Date</label>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs bg-white focus:ring-1 focus:ring-violet-500 focus:outline-none"
-          />
+        <div className="p-4 space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Type</label>
+              <select value={reportType} onChange={e => setReportType(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[140px]">
+                <option>Summary</option><option>Detailed</option><option>Item Wise</option>
+                <option>Doctor Wise</option><option>Doctor Summary</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Date</label>
+              <select value={reportDate} onChange={e => setReportDate(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[90px]">
+                <option>Today</option><option>Yesterday</option><option>This Week</option>
+                <option>This Month</option><option>Custom</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">From</label>
+              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">To</label>
+              <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none" />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Receptionist</label>
+              <select value={reportReceptionist} onChange={e => setReportReceptionist(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[130px]">
+                <option>(All)</option><option>RECEPTION STAFF</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Doctor</label>
+              <select value={reportDoctor} onChange={e => setReportDoctor(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[200px]">
+                <option>(All)</option><option>ARUN PRAKASH</option><option>SWATHIGHA SUDHEER .K</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Payment Mode</label>
+              <select value={paymentMode} onChange={e => setPaymentMode(e.target.value)}
+                className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none min-w-[110px]">
+                <option value="all">All Modes</option><option value="Cash">Cash Only</option>
+                <option value="UPI">UPI Only</option><option value="Card">Card Only</option>
+                <option value="Advance">Advance Adjusted</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">Time</label>
+              <div className="flex items-center gap-1">
+                <input type="time" value={timeFrom} onChange={e => setTimeFrom(e.target.value)}
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[85px]" />
+                <span className="text-xs text-slate-500">to</span>
+                <input type="time" value={timeTo} onChange={e => setTimeTo(e.target.value)}
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[85px]" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">No</label>
+              <div className="flex items-center gap-1">
+                <input type="text" value={noFrom} onChange={e => setNoFrom(e.target.value)} placeholder="From"
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[60px]" />
+                <span className="text-xs text-slate-500">to</span>
+                <input type="text" value={noTo} onChange={e => setNoTo(e.target.value)} placeholder="To"
+                  className="border border-slate-300 rounded px-2 py-1 text-xs bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none w-[60px]" />
+              </div>
+            </div>
+          </div>
         </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Payment Mode</label>
-          <select
-            value={paymentMode}
-            onChange={(e) => setPaymentMode(e.target.value)}
-            className="border border-slate-300 rounded-lg px-3 py-1.5 text-xs bg-white focus:ring-1 focus:ring-violet-500 focus:outline-none"
-          >
-            <option value="all">All Modes</option>
-            <option value="Cash">Cash Only</option>
-            <option value="UPI">UPI Only</option>
-            <option value="Card">Card Only</option>
-            <option value="Advance">Advance Adjusted</option>
-          </select>
+        <div className="border-t border-slate-200 bg-slate-50 px-4 py-2 flex items-center gap-2 rounded-b-lg">
+          <button onClick={fetchReport} disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold px-5 py-1.5 rounded shadow-xs">
+            {loading ? 'Loading...' : 'View'}
+          </button>
+          <button onClick={() => window.print()}
+            className="bg-slate-600 hover:bg-slate-700 text-white text-xs font-bold px-5 py-1.5 rounded shadow-xs flex items-center gap-1">
+            <Printer className="w-3 h-3" /> Print
+          </button>
+          <button onClick={() => window.history.back()}
+            className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-5 py-1.5 rounded shadow-xs">
+            Exit
+          </button>
         </div>
-
-        <button
-          onClick={fetchReport}
-          disabled={loading}
-          className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-xs"
-        >
-          {loading ? 'Filtering...' : 'Apply Filters'}
-        </button>
       </div>
 
       {/* Summary KPI */}

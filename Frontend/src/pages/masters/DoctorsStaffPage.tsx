@@ -41,6 +41,24 @@ export default function DoctorsStaffPage() {
     specialisation: '',
     phone: '',
     email: '',
+    // Screenshot (14) Doctor Master fields
+    code: '',
+    fees: '500',
+    target: '0',
+    commission: '0',
+    discount: '0',
+    discount_from_commission: '0',
+    reg_fee: '100',
+    remarks: '',
+    // Consultation schedule
+    consult_from: '09:00',
+    consult_to: '17:00',
+    consult_duration: '15',
+    consult_validity: '30',
+    consult_description: '',
+    // Booking schedule
+    booking_first_token: '1',
+    booking_difference: '15',
   });
 
   const loadData = async () => {
@@ -98,6 +116,21 @@ export default function DoctorsStaffPage() {
         specialisation: '',
         phone: '',
         email: '',
+        code: '',
+        fees: '500',
+        target: '0',
+        commission: '0',
+        discount: '0',
+        discount_from_commission: '0',
+        reg_fee: '100',
+        remarks: '',
+        consult_from: '09:00',
+        consult_to: '17:00',
+        consult_duration: '15',
+        consult_validity: '30',
+        consult_description: '',
+        booking_first_token: '1',
+        booking_difference: '15',
       });
       await loadData();
       setTimeout(() => {
@@ -430,6 +463,93 @@ export default function DoctorsStaffPage() {
                   className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-violet-500 focus:outline-none"
                 />
               </div>
+
+              {/* SCREENSHOT (14) DOCTOR MASTER FIELDS - Fees, Target, Commission etc. */}
+              {(formData.role === 'Doctor' || formData.role === 'Super Admin') && (
+                <div className="space-y-3 bg-sky-50/50 p-3 rounded-lg border border-sky-200">
+                  <span className="block text-[11px] font-bold text-sky-900 uppercase tracking-wider">
+                    Doctor Financial & Consultation Config (Screenshot 14)
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Code</label>
+                      <input type="text" name="code" value={formData.code} onChange={handleInputChange} placeholder="DR001" className="w-full border border-slate-300 rounded px-2 py-1.5 font-mono font-bold" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Fees</label>
+                      <input type="number" name="fees" value={formData.fees} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 font-bold text-right" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Target</label>
+                      <input type="number" name="target" value={formData.target} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-right" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Commission</label>
+                      <input type="number" name="commission" value={formData.commission} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-right" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Discount</label>
+                      <input type="number" name="discount" value={formData.discount} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-right" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1 text-[10px]">Disc from Commission</label>
+                      <input type="number" name="discount_from_commission" value={formData.discount_from_commission} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-right" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Reg Fee</label>
+                      <input type="number" name="reg_fee" value={formData.reg_fee} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-right" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Remarks</label>
+                      <input type="text" name="remarks" value={formData.remarks} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5" />
+                    </div>
+                  </div>
+
+                  {/* Consultation Schedule */}
+                  <span className="block text-[10px] font-bold text-sky-800 uppercase tracking-wider pt-1 border-t border-sky-200">
+                    Consultation Schedule
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">From</label>
+                      <input type="time" name="consult_from" value={formData.consult_from} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">To</label>
+                      <input type="time" name="consult_to" value={formData.consult_to} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Duration (min)</label>
+                      <input type="number" name="consult_duration" value={formData.consult_duration} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-center" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Validity (days)</label>
+                      <input type="number" name="consult_validity" value={formData.consult_validity} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-center" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Description</label>
+                      <input type="text" name="consult_description" value={formData.consult_description} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5" />
+                    </div>
+                  </div>
+
+                  {/* Booking Schedule */}
+                  <span className="block text-[10px] font-bold text-sky-800 uppercase tracking-wider pt-1 border-t border-sky-200">
+                    Booking Token Config
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">First Token</label>
+                      <input type="number" name="booking_first_token" value={formData.booking_first_token} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-center font-bold" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Difference (min)</label>
+                      <input type="number" name="booking_difference" value={formData.booking_difference} onChange={handleInputChange} className="w-full border border-slate-300 rounded px-2 py-1.5 text-center" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

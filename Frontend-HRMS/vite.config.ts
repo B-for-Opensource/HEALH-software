@@ -13,6 +13,8 @@ export default defineConfig({
   },
   server: {
     port: 3001,
+    strictPort: true,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
         target: 'https://healh-software-ru1r.onrender.com',
