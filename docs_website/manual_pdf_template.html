@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HEALESTHETIC — Clinic Manager &amp; Doctor Operating Manual</title>
+  
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 12mm 14mm 12mm;
+    }
+
+    :root {
+      --heal-bronze: #965f36;
+      --heal-bronze-dark: #7a4a27;
+      --heal-terracotta: #9b5229;
+      --heal-cream: #faf7f2;
+      --heal-dark: #241c18;
+      --heal-emerald: #059669;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: #ffffff;
+      color: #334155;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1, h2, h3, h4, .font-serif {
+      font-family: var(--font-serif);
+      color: var(--heal-dark);
+    }
+
+    /* COVER PAGE */
+    .cover-page {
+      height: 100vh;
+      min-height: 270mm;
+      background: linear-gradient(145deg, #1e1713 0%, #2f221c 45%, #965f36 100%);
+      color: #ffffff;
+      padding: 40mm 20mm 25mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-after: always;
+      position: relative;
+    }
+
+    .cover-badge {
+      background: rgba(250, 174, 90, 0.18);
+      border: 1px solid rgba(250, 174, 90, 0.45);
+      color: #faae5a;
+      font-size: 8.5pt;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      padding: 5px 14px;
+      border-radius: 50px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+    }
+
+    .cover-title {
+      font-size: 34pt;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      line-height: 1.15;
+      margin: 15px 0 10px;
+      color: #ffffff;
+    }
+
+    .cover-subtitle {
+      font-size: 14pt;
+      color: #fce7d2;
+      font-weight: 600;
+      line-height: 1.35;
+      margin-bottom: 25px;
+    }
+
+    .cover-meta-box {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    /* STATION SECTION CARDS */
+    .station-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      margin-bottom: 18mm;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: always;
+    }
+
+    .station-header {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .station-badge {
+      font-size: 7.5pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 20px;
+      color: #ffffff;
+    }
+
+    .station-body {
+      padding: 16px 18px;
+    }
+
+    /* BROWSER SCREENSHOT FRAME */
+    .browser-frame {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0f172a;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      margin-top: 10px;
+    }
+
+    .browser-bar {
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 5px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .browser-url {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      font-size: 7pt;
+      color: #64748b;
+      padding: 2px 10px;
+      font-family: monospace;
+      flex-grow: 1;
+      margin-left: 6px;
+    }
+
+    .browser-screenshot {
+      width: 100%;
+      height: auto;
+      max-height: 105mm;
+      object-fit: contain;
+      display: block;
+      background: #ffffff;
+    }
+
+    .info-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+    }
+
+    .info-box-label {
+      font-size: 7pt;
+      font-weight: 800;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      display: block;
+    }
+
+    .info-box-value {
+      font-size: 9pt;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .action-checklist {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #166534;
+      font-size: 8.5pt;
+    }
+
+    .pipeline-step-pill {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+      height: 100%;
+    }
+    .step-circle {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      margin: 0 auto 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 8pt;
+    }
+
+    table.compact-table {
+      font-size: 8pt;
+      margin-bottom: 0;
+    }
+    table.compact-table th {
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+      padding: 6px 10px;
+    }
+    table.compact-table td {
+      padding: 6px 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= COVER PAGE ================= -->
+  <div class="cover-page">
+    <div>
+      <div class="cover-badge mb-4">
+        <i class="bi bi-shield-check"></i> Enterprise Healthcare OS &bull; Manager Edition
+      </div>
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-heart-pulse-fill text-warning" style="font-size: 26pt;"></i>
+        <span class="font-serif fw-bold" style="font-size: 22pt; letter-spacing: 0.08em; color: #faae5a;">HEALESTHETIC</span>
+      </div>
+      <h1 class="cover-title">CLINIC MANAGER &amp;<br>DOCTOR OPERATING MANUAL</h1>
+      <div class="cover-subtitle">Complete End-to-End Patient Pipeline Guide &amp; Visual Station Directory</div>
+      <p style="font-size: 10.5pt; color: #e2e8f0; max-width: 520px; line-height: 1.6;">
+        A practical step-by-step handbook for healthcare managers, consulting doctors, nurses, pharmacists, and desk staff detailing patient movement from front-desk intake to multi-department ordering, diagnostics execution, and closed-loop consultation finalization.
+      </p>
+    </div>
+
+    <div>
+      <div class="cover-meta-box">
+        <div class="row g-3" style="font-size: 8.5pt;">
+          <div class="col-3">
+            <span class="d-block text-white-50">DOCUMENT VERSION</span>
+            <strong class="text-white">v2.0 (Production)</strong>
+          </div>
+          <div class="col-3">
+            <span class="d-block text-white-50">CLINIC HUBS</span>
+            <strong class="text-white">Kozhikode &amp; Wayanad</strong>
+          </div>
+          <div class="col-3">
+            <span class="d-block text-white-50">SYSTEM EDITION</span>
+            <strong class="text-white">Multi-Branch SaaS</strong>
+          </div>
+          <div class="col-3">
+            <span class="d-block text-white-50">LAST UPDATED</span>
+            <strong class="text-white">November 2026</strong>
+          </div>
+        </div>
+      </div>
+      <div class="text-white-50 mt-3 small">
+        &copy; 2026 HEALESTHETIC Healthcare Group &bull; Calicut Flagship, Beach Road, Wayanad Hubs.
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SECTION 1: PIPELINE OVERVIEW ================= -->
+  <div class="page-break"></div>
+
+  <div class="mb-4">
+    <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
+      <div>
+        <span class="text-uppercase fw-bold text-muted" style="font-size: 7.5pt; letter-spacing: 0.08em;">Executive Framework</span>
+        <h2 class="h4 fw-bold mb-0">8-Stage Clinical Patient Journey</h2>
+      </div>
+      <span class="badge bg-dark rounded-pill px-3 py-1.5" style="font-size: 8pt;">Standard Operating Procedure</span>
+    </div>
+
+    <p style="font-size: 9.5pt; color: #475569;" class="mb-4">
+      The HEALESTHETIC platform coordinates clinic operations in a unified, continuous loop. A patient registered at reception has a single permanent OP number, with simultaneous routing to Nurse Triage, Doctor Workbench, Laboratory, Radiology, and Pharmacy.
+    </p>
+
+    <!-- Pipeline Grid -->
+    <div class="row row-cols-4 g-2 mb-4">
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-primary text-white">1</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Reception Desk</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">Name, DOB (Auto-Age) &amp; Doctor Assign</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-success text-white">2</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Nurse Station</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">BP, Pulse, SpO2, BMI &amp; Blood Group</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-danger text-white">3</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Doctor Room</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">Notes, Diagnosis &amp; Face Mapping</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-warning text-dark">4</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Multi-Orders</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">Rx, Blood Tests, Scans &amp; Daycare</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-info text-dark">5</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Diagnostics</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">Pathology Lab &amp; Radiology Suites</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-success text-white">6</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Pharmacy Counter</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">FEFO Dispensing &amp; Walk-In Sales</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-primary text-white">7</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Results Return</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">Doctor Closed-Loop Finalization</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pipeline-step-pill">
+          <div class="step-circle bg-dark text-white">8</div>
+          <strong class="d-block text-dark" style="font-size: 8.5pt;">Billing POS</strong>
+          <small class="text-muted" style="font-size: 7.5pt;">Auto-Aggregated Charges &amp; GST</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 1: RECEPTION ================= -->
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-primary">Stage 01</span>
+        <h4 class="h5 fw-bold mb-0">Reception Desk — Fast-Track Patient Registration</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-person-badge me-1"></i> Operator: Front Desk Receptionist</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-5">
+          <div class="info-box">
+            <span class="info-box-label">Menu Location</span>
+            <span class="info-box-value">Core App &rarr; "Patient Registration"</span>
+          </div>
+          <h6 class="fw-bold text-dark mt-2 mb-1" style="font-size: 8.5pt;">Receptionist Workflow:</h6>
+          <ol class="small text-secondary ps-3 mb-2" style="font-size: 8pt;">
+            <li>Selects <strong>Primary Details Intake (Reception &rarr; Nurse Queue)</strong>.</li>
+            <li>Enters <strong>Full Name</strong> (e.g. <em>Fathima Zahra</em>).</li>
+            <li>Selects <strong>Date of Birth</strong> &mdash; <em>system calculates exact age automatically!</em></li>
+            <li>Assigns consulting Doctor (e.g. Dr. Ananya Nair).</li>
+            <li>Clicks <strong>"Register Patient &amp; Send to Nurse Queue"</strong>.</li>
+          </ol>
+          <div class="action-checklist">
+            <strong><i class="bi bi-check-circle-fill me-1"></i> Result:</strong> Permanent OP Number (e.g. A00373) is generated; patient is instantly routed to Nurse Station.
+          </div>
+        </div>
+        <div class="col-7">
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/reception/register</span>
+            </div>
+            <img src="screenshots/01_reception_register.png" alt="Reception Registration" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 2: NURSE TRIAGE ================= -->
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-success">Stage 02</span>
+        <h4 class="h5 fw-bold mb-0">Nurse Station — Pre-Doctor Intake &amp; Vital Signs</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-heart-pulse me-1"></i> Operator: Staff Nurse</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-5">
+          <div class="info-box">
+            <span class="info-box-label">Menu Location</span>
+            <span class="info-box-value">Core App &rarr; "Nurse Station" or "Appointments"</span>
+          </div>
+          <h6 class="fw-bold text-dark mt-2 mb-1" style="font-size: 8.5pt;">Nurse Workflow:</h6>
+          <ol class="small text-secondary ps-3 mb-2" style="font-size: 8pt;">
+            <li>Calls patient from <strong>"Awaiting Vitals"</strong> queue.</li>
+            <li>Logs vital signs:
+              <ul>
+                <li>Blood Pressure (Systolic / Diastolic)</li>
+                <li>Pulse Rate &amp; Oxygen SpO2 %</li>
+                <li>Height &amp; Weight &rarr; <em>System calculates BMI category</em></li>
+                <li>Blood Group (A+, B+, O+, AB+) &amp; Known Allergies</li>
+              </ul>
+            </li>
+            <li>Clicks <strong>"Submit Vitals &amp; Send to Doctor"</strong>.</li>
+          </ol>
+          <div class="action-checklist">
+            <strong><i class="bi bi-check-circle-fill me-1"></i> Result:</strong> Patient status becomes "Ready for Doctor" and appears in doctor room queue.
+          </div>
+        </div>
+        <div class="col-7">
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/reception/queue (Nurse Intake)</span>
+            </div>
+            <img src="screenshots/02_nurse_triage.png" alt="Nurse Queue & Vitals" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 3: DOCTOR ROOM ================= -->
+  <div class="page-break"></div>
+
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-danger">Stage 03</span>
+        <h4 class="h5 fw-bold mb-0">Doctor Room — Consultation &amp; Clinical Examination</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-stethoscope me-1"></i> Operator: Consulting Doctor</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-5">
+          <div class="info-box">
+            <span class="info-box-label">Menu Location</span>
+            <span class="info-box-value">Core App &rarr; "Doctor Workbench"</span>
+          </div>
+          <h6 class="fw-bold text-dark mt-2 mb-1" style="font-size: 8.5pt;">Doctor Workflow:</h6>
+          <ol class="small text-secondary ps-3 mb-2" style="font-size: 8pt;">
+            <li>Clicks patient in left <strong>"Consultation Queue"</strong>.</li>
+            <li><strong>Verified Green Banner:</strong> Top banner shows nurse's recorded BP, BMI, Blood Group, and nurse name.</li>
+            <li>Enters Chief Complaints, Examination, Diagnosis, and Treatment Plan.</li>
+            <li>For skin/laser treatments, drops pins on 2D anatomical canvas to mark units/fluence.</li>
+          </ol>
+          <div class="action-checklist">
+            <strong><i class="bi bi-check-circle-fill me-1"></i> Result:</strong> Complete clinical documentation saved; doctor writes multi-department orders next.
+          </div>
+        </div>
+        <div class="col-7">
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/clinical/doctor</span>
+            </div>
+            <img src="screenshots/03_doctor_workbench_consultation.png" alt="Doctor Workbench" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 4: MULTI-ORDERS ================= -->
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-warning text-dark">Stage 04</span>
+        <h4 class="h5 fw-bold mb-0">Multi-Department Orders — 1-Click Parallel Routing</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-send me-1"></i> Operator: Consulting Doctor</span>
+    </div>
+    <div class="station-body">
+      <p class="small text-secondary mb-3">
+        From the bottom tabs of the Doctor Workbench, the doctor generates parallel departmental orders in a single consultation:
+      </p>
+      <div class="row g-2 mb-3">
+        <div class="col-3">
+          <div class="p-2 border rounded bg-light">
+            <strong class="d-block text-primary small"><i class="bi bi-capsule me-1"></i> Pharmacy Rx</strong>
+            <span style="font-size: 7.5pt;" class="text-muted">Medicines, dosage (1-0-1), duration &amp; food timing. Routes to Dispensary.</span>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="p-2 border rounded bg-light">
+            <strong class="d-block text-danger small"><i class="bi bi-droplet-half me-1"></i> Blood Tests</strong>
+            <span style="font-size: 7.5pt;" class="text-muted">Tick CBC, LFT, Lipid, HbA1c. Routes directly to Pathology Laboratory.</span>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="p-2 border rounded bg-light">
+            <strong class="d-block text-info small"><i class="bi bi-aspect-ratio me-1"></i> Radiology Scans</strong>
+            <span style="font-size: 7.5pt;" class="text-muted">Select Chest X-Ray, USG Abdomen, MRI Brain. Routes to Imaging Room.</span>
+          </div>
+        </div>
+        <div class="col-3">
+          <div class="p-2 border rounded bg-light">
+            <strong class="d-block text-success small"><i class="bi bi-bandaid me-1"></i> Daycare Care</strong>
+            <span style="font-size: 7.5pt;" class="text-muted">Order Chemical Peel, IV Infusion, Wound Dressing. Routes to Nurse Lounge.</span>
+          </div>
+        </div>
+      </div>
+      <div class="action-checklist">
+        <strong><i class="bi bi-printer-fill me-1"></i> Prescription Letterhead:</strong> Clicking "Print Prescription" outputs branded header <strong>HEALESTHETIC CLINIC &amp; ADVANCED AESTHETIC CARE</strong> with doctor license number and clinic phone.
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 5: DIAGNOSTICS ================= -->
+  <div class="page-break"></div>
+
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-info text-dark">Stage 05</span>
+        <h4 class="h5 fw-bold mb-0">Diagnostics Execution — Pathology Lab &amp; Radiology</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-activity me-1"></i> Operators: Lab Tech &amp; Radiologist</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-6">
+          <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-droplet-half text-danger me-1"></i> Pathology Lab (/clinical/lab)</h6>
+          <p style="font-size: 7.5pt;" class="text-muted mb-2">Tech draws sample, inputs observed values; abnormal flags display automatically. Pathologist clicks <strong>"Release Report"</strong>.</p>
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/clinical/lab</span>
+            </div>
+            <img src="screenshots/05_diagnostics_lab.png" alt="Laboratory Orders" class="browser-screenshot">
+          </div>
+        </div>
+        <div class="col-6">
+          <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-aspect-ratio text-info me-1"></i> Radiology &amp; Scans (/clinical/imaging)</h6>
+          <p style="font-size: 7.5pt;" class="text-muted mb-2">Radiologist conducts X-Ray/MRI/USG, logs clinical impressions, and clicks <strong>"Verify Scan"</strong>. Test charges queue for cashier.</p>
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/clinical/imaging</span>
+            </div>
+            <img src="screenshots/06_radiology_imaging.png" alt="Radiology Orders" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 6: PHARMACY ================= -->
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-success">Stage 06</span>
+        <h4 class="h5 fw-bold mb-0">Pharmacy Counter — Doctor Rx Queue &amp; Direct Walk-In Sales</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-prescription2 me-1"></i> Operator: Chief Pharmacist</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-6">
+          <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-file-medical text-success me-1"></i> 1. Doctor Prescription Queue (FEFO)</h6>
+          <p style="font-size: 7.5pt;" class="text-muted mb-2">Dispenses against doctor orders. Pulls earliest expiring batch automatically. Schedule H1 drugs prompt statutory doctor reg ID lock.</p>
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/pharmacy/dispensary</span>
+            </div>
+            <img src="screenshots/07_pharmacy_dispensary.png" alt="Pharmacy Dispensary" class="browser-screenshot">
+          </div>
+        </div>
+        <div class="col-6">
+          <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-bag-plus text-primary me-1"></i> 2. Direct Walk-In OTC Skincare Sales</h6>
+          <p style="font-size: 7.5pt;" class="text-muted mb-2">For retail sunscreen or skincare sales without a doctor consultation, click <strong>"+ Direct Walk-In Sale"</strong> to bill with 0 consultation charges.</p>
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">Direct Walk-In Modal</span>
+            </div>
+            <img src="screenshots/08_pharmacy_walkin_sale.png" alt="Direct Walk-In Sale" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 7: RETURNED WITH RESULTS ================= -->
+  <div class="page-break"></div>
+
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-primary">Stage 07</span>
+        <h4 class="h5 fw-bold mb-0">Closed-Loop Results Return — Doctor Reviews Reports &amp; Closes Visit</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-arrow-repeat me-1"></i> Operator: Consulting Doctor</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-5">
+          <div class="info-box">
+            <span class="info-box-label">Menu Location</span>
+            <span class="info-box-value">Doctor Workbench &rarr; "Returned with Results" Tab</span>
+          </div>
+          <h6 class="fw-bold text-dark mt-2 mb-1" style="font-size: 8.5pt;">Review Workflow:</h6>
+          <ol class="small text-secondary ps-3 mb-2" style="font-size: 8pt;">
+            <li>Doctor does <strong>not</strong> re-search patient.</li>
+            <li>When lab/radiology releases reports, patient appears in <strong>"Returned with Results"</strong> tab with live badge.</li>
+            <li>Doctor reviews verified blood test values and scan impressions.</li>
+            <li>Doctor provides final advice, adjusts medicines if needed, and clicks <strong>"Complete Consultation &amp; Close Visit"</strong>.</li>
+          </ol>
+          <div class="action-checklist">
+            <strong><i class="bi bi-check-circle-fill me-1"></i> Result:</strong> Clinical visit is marked COMPLETED; patient proceeds to cashier for payment.
+          </div>
+        </div>
+        <div class="col-7">
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/clinical/doctor (Returned with Results)</span>
+            </div>
+            <img src="screenshots/04_doctor_returned_results.png" alt="Doctor Returned Results" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 8: BILLING POS ================= -->
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-dark">Stage 08</span>
+        <h4 class="h5 fw-bold mb-0">Central Billing Desk — Automated Charge Aggregation &amp; GST POS</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-receipt me-1"></i> Operator: Billing Cashier</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-5">
+          <div class="info-box">
+            <span class="info-box-label">Menu Location</span>
+            <span class="info-box-value">Core App &rarr; "Billing &amp; Cashier"</span>
+          </div>
+          <h6 class="fw-bold text-dark mt-2 mb-1" style="font-size: 8.5pt;">Zero Missed Charges:</h6>
+          <ol class="small text-secondary ps-3 mb-2" style="font-size: 8pt;">
+            <li>Cashier selects patient.</li>
+            <li><strong>Auto-Aggregated Charges:</strong> System automatically pulls all completed services:
+              <ul>
+                <li>Doctor Consultation Fee</li>
+                <li>Laboratory Tests (CBC, LFT)</li>
+                <li>Radiology Scans (X-Ray, MRI)</li>
+                <li>Nursing Daycare Procedures</li>
+              </ul>
+            </li>
+            <li>Cashier collects via <strong>Cash, Card (POS), or UPI</strong>.</li>
+            <li>Prints official GST tax invoice; balance sets to ₹0.00.</li>
+          </ol>
+        </div>
+        <div class="col-7">
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">/billing/pos</span>
+            </div>
+            <img src="screenshots/09_billing_pos.png" alt="Billing POS" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= STAGE 9: PATIENT PORTAL & HRMS ================= -->
+  <div class="page-break"></div>
+
+  <div class="station-section">
+    <div class="station-header">
+      <div class="d-flex align-items-center gap-2">
+        <span class="station-badge bg-info text-white">Stage 09</span>
+        <h4 class="h5 fw-bold mb-0">Patient Smartphone Access &amp; Management HRMS</h4>
+      </div>
+      <span class="badge bg-light text-dark border"><i class="bi bi-phone me-1"></i> Mobile Portal &amp; Workforce Rostering</span>
+    </div>
+    <div class="station-body">
+      <div class="row g-3">
+        <div class="col-6">
+          <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-phone text-danger me-1"></i> Patient Web Portal (Phone + OTP Login)</h6>
+          <p style="font-size: 7.5pt;" class="text-muted mb-2">Patients login with phone &amp; OTP to view prescriptions, visit timeline, and download verified released lab/scan PDF reports.</p>
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">https://healh-patient.netlify.app</span>
+            </div>
+            <img src="screenshots/10_patient_portal_login.png" alt="Patient Portal" class="browser-screenshot">
+          </div>
+        </div>
+        <div class="col-6">
+          <h6 class="fw-bold text-dark mb-1 small"><i class="bi bi-calendar-check text-primary me-1"></i> HRMS &amp; Doctor Rosters</h6>
+          <p style="font-size: 7.5pt;" class="text-muted mb-2">Manager views doctor monthly duty rosters, shift schedules, and aesthetic procedure doctor commission payouts.</p>
+          <div class="browser-frame">
+            <div class="browser-bar">
+              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+              <span class="browser-url">https://healh-hrms.netlify.app/hrms</span>
+            </div>
+            <img src="screenshots/11_hrms_rosters.png" alt="HRMS Rosters" class="browser-screenshot">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MANAGER'S CHECKLIST TABLE ================= -->
+  <div class="station-section">
+    <div class="station-header">
+      <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clipboard-check text-success me-2"></i> Clinic Manager's Daily Inspection Checklist</h5>
+    </div>
+    <div class="p-3">
+      <table class="table table-bordered compact-table">
+        <thead>
+          <tr>
+            <th>Question / Objective</th>
+            <th>Menu Location</th>
+            <th>What to Check</th>
+            <th>Corrective Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="fw-bold">How many patients arrived today?</td>
+            <td>Reception &rarr; Queue</td>
+            <td>Total token numbers and waiting counts</td>
+            <td class="text-muted">Ensure all waiting patients have an assigned doctor</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Are nurses recording vitals before doctor?</td>
+            <td>Doctor Workbench</td>
+            <td>Top green banner showing BP, BMI, Nurse Name</td>
+            <td class="text-muted">Remind reception to send patient to nurse station first</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Any patients waiting for test results?</td>
+            <td>Doctor Workbench &rarr; "Returned"</td>
+            <td>Badge count of verified lab/scan returnees</td>
+            <td class="text-muted">Doctor calls patient in to finalize consultation</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Are any medicines expiring soon?</td>
+            <td>Pharmacy OS &rarr; Batches</td>
+            <td>Amber tags on batches &lt; 30 days</td>
+            <td class="text-muted">Issue Debit Note to distributor for credit replacement</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Daily cash &amp; UPI collections match drawer?</td>
+            <td>Billing &rarr; Shift Summary</td>
+            <td>Cash vs Card vs UPI collection breakdown</td>
+            <td class="text-muted">Reconcile cash drawer and close shift register</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= ACCESS CREDENTIALS DIRECTORY ================= -->
+  <div class="station-section mb-0">
+    <div class="station-header">
+      <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-key-fill text-warning me-2"></i> Staff Login Credentials Directory</h5>
+    </div>
+    <div class="p-3">
+      <table class="table table-bordered compact-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Staff Name</th>
+            <th>Username</th>
+            <th>Default Password</th>
+            <th>Portal Access</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="fw-bold">Clinic Director (Super Admin)</td>
+            <td>Dr. Shahnaz</td>
+            <td><code>admin</code></td>
+            <td><code>Admin@1234</code></td>
+            <td>All Modules &amp; Full System Access</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Consultant Dermatologist</td>
+            <td>Dr. Ananya Nair</td>
+            <td><code>dr.ananya</code></td>
+            <td><code>Doctor@1234</code></td>
+            <td>Doctor Workbench, Rx, Orders &amp; Results</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">General Physician</td>
+            <td>Dr. Rahul Menon</td>
+            <td><code>dr.rahul</code></td>
+            <td><code>Doctor@1234</code></td>
+            <td>Doctor Workbench &amp; General OPD</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Staff Nurse</td>
+            <td>Anjali Pillai</td>
+            <td><code>nurse</code></td>
+            <td><code>Nurse@1234</code></td>
+            <td>Nurse Triage Station, Vitals &amp; Daycare</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Front Desk Receptionist</td>
+            <td>Meera Nair</td>
+            <td><code>reception</code></td>
+            <td><code>Reception@1234</code></td>
+            <td>Patient Registration &amp; Appointments</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Billing Cashier</td>
+            <td>Rohan Das</td>
+            <td><code>cashier</code></td>
+            <td><code>Cashier@1234</code></td>
+            <td>Billing POS &amp; Shift Register</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Chief Pharmacist</td>
+            <td>Alex Mathew</td>
+            <td><code>pharmacist</code></td>
+            <td><code>Pharma@1234</code></td>
+            <td>Pharmacy Dispensary &amp; FEFO Inventory</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Pathology Lab Tech</td>
+            <td>Dr. Kavya Menon</td>
+            <td><code>labtech</code></td>
+            <td><code>Lab@1234</code></td>
+            <td>Laboratory Diagnostics &amp; Results</td>
+          </tr>
+          <tr>
+            <td class="fw-bold">Radiologist</td>
+            <td>Dr. Vivek Varma</td>
+            <td><code>radiologist</code></td>
+            <td><code>Radio@1234</code></td>
+            <td>X-Ray, MRI, Ultrasound Reports</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>
